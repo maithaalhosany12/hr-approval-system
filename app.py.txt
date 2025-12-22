@@ -1,0 +1,110 @@
+import streamlit as st
+import pandas as pd
+from database import init_db, get_appeal_count
+import sqlite3
+from datetime import datetime, timedelta
+
+init_db()
+
+st.title("📋 Personnel Request & Approval System")
+
+menu = ["Submit Request", "Track Application", "Approval Portal"]
+choice = st.sidebar.selectbox("Navigation", menu)
+
+# --- STAGE 1: SUBMISSION ---
+if choice == "Submit Request":
+    st.header("New Applicant Request")
+    with st.form("request_form"):
+        col1, col2 = st.columns(2)
+        number = col1.text_input("Service Number")
+        unit = col2.text_input("Unit")
+        name = st.text_input("Full Name")
+        appt_date = st.date_input("Appointment Date")
+        
+        subject = st.selectbox("Subject of Request", 
+                               ["Change of Profession", "Transfer", "Termination of Service"])
+        
+        attachment = None
+        if subject in ["Change of Profession", "Termination of Service"]:
+            attachment = st.file_uploader("Upload Required Document")
+
+        if st.form_submit_button("Submit Request"):
+            conn = sqlite3.connect('requests.db')
+            c = conn.cursor()
+            c.execute("INSERT INTO requests (number, unit, name, appt_date, subject, submit_date, status, stage) VALUES (?,?,?,?,?,?,?,?)",
+                      (number, unit, name, str(appt_date), subject, datetime.now(), "Pending Supervisor", 1))
+            conn.commit()
+            st.success("Request submitted successfully!")
+
+# --- STAGE 2: TRACKING ---
+elif choice == "Track Application":
+    st.header("Application Status & History")
+    req_id = st.number_input("Enter Request ID to track", step=1)
+    
+    if req_id:
+        conn = sqlite3.connect('requests.db')
+        df_req = pd.read_sql(f"SELECT * FROM requests WHERE id = {req_id}", conn)
+        df_appr = pd.read_sql(f"SELECT stage_name, decision, actor_name, processed_at, duration_hours FROM approvals WHERE request_id = {req_id}", conn)
+        
+        if not df_req.empty:
+            st.write(f"**Current Status:** {df_req['status'].values[0]}")
+            st.write(f"**Current Stage:** {df_req['stage'].values[0]} / 3")
+            
+            st.subheader("Approval Timeline")
+            st.table(df_appr)
+            
+            # Appeal Logic
+            appeal_count = get_appeal_count(req_id)
+            st.info(f"Appeals submitted: {appeal_count} / 3")
+            
+            if appeal_count < 3:
+                if st.button("Submit Appeal"):
+                    c = conn.cursor()
+                    c.execute("INSERT INTO appeals (request_id, appeal_count, appeal_date) VALUES (?,?,?)",
+                              (req_id, appeal_count + 1, datetime.now()))
+                    conn.commit()
+                    st.warning(f"Appeal #{appeal_count + 1} registered.")
+            else:
+                st.error("Maximum limit of 3 appeals reached.")
+        else:
+            st.error("Request ID not found.")
+
+# --- STAGE 3: APPROVAL PORTAL ---
+elif choice == "Approval Portal":
+    st.header("Authorized Approvals")
+    role = st.selectbox("Approver Role", ["Direct Supervisor", "Unit Commander", "Human Resources"])
+    
+    conn = sqlite3.connect('requests.db')
+    # Filter requests based on stage
+    stage_map = {"Direct Supervisor": 1, "Unit Commander": 2, "Human Resources": 3}
+    current_stage_idx = stage_map[role]
+    
+    pending_reqs = pd.read_sql(f"SELECT * FROM requests WHERE stage = {current_stage_idx}", conn)
+    st.dataframe(pending_reqs)
+    
+    if not pending_reqs.empty:
+        selected_id = st.selectbox("Select Request ID to Action", pending_reqs['id'])
+        with st.form("approval_form"):
+            actor_name = st.text_input("Name")
+            rank = st.text_input("Rank")
+            decision = st.radio("Decision", ["Agree", "Disagree"])
+            comments = st.text_area("Comments")
+            
+            if st.form_submit_button("Submit Decision"):
+                # Calculate processing time
+                start_time_str = pending_reqs[pending_reqs['id'] == selected_id]['submit_date'].values[0]
+                start_time = datetime.strptime(start_time_str, '%Y-%m-%d %H:%M:%S.%f')
+                duration = (datetime.now() - start_time).total_seconds() / 3600 # hours
+                
+                c = conn.cursor()
+                # Update Request
+                new_stage = current_stage_idx + 1 if decision == "Agree" else current_stage_idx
+                new_status = f"Approved by {role}" if decision == "Agree" else f"Rejected by {role}"
+                
+                c.execute("UPDATE requests SET stage = ?, status = ? WHERE id = ?", (new_stage, new_status, selected_id))
+                
+                # Log Approval
+                c.execute("INSERT INTO approvals VALUES (?,?,?,?,?,?,?)",
+                          (selected_id, role, actor_name, decision, comments, datetime.now(), round(duration, 2)))
+                conn.commit()
+                st.success("Decision recorded.")
