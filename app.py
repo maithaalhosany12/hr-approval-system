@@ -89,9 +89,9 @@ st.sidebar.markdown("### 📋 القائمة")
 
 # التعديل الجديد باستخدام selectbox بدلاً من radio
 choice = st.sidebar.selectbox(
+    "اختر الإجراء المطلوب:", 
     ["تقديم طلب جديد", "متابعة الطلبات"]
 )
-
 if choice == "تقديم طلب جديد":
     st.markdown("<h1 style='text-align: center; color: #2d3436;'>نموذج تقديم طلب إداري</h1><br>", unsafe_allow_html=True)
 
@@ -145,6 +145,7 @@ if choice == "تقديم طلب جديد":
 
 elif choice == "متابعة الطلبات":
     st.info("صفحة المتابعة جاهزة للاستخدام")
+
 
 
 
