@@ -2,17 +2,17 @@ import streamlit as st
 from datetime import datetime
 import time
 
-# 1. إعداد الصفحة (نفس العرض والنمط القديم)
+# 1. إعداد الصفحة (التصميم الأصلي الفخم)
 st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. تنسيق CSS القديم (الفخم) مع تعديل عرض الحقول فقط
+# 2. تنسيق CSS: الحفاظ على الاتجاه لليمين + تقصير الحقول بجانب بعضها
 st.markdown("""
     <style>
-    /* التوجه العام */
+    /* التوجه العام لليمين */
     .main { direction: rtl !important; text-align: right !important; background-color: #f4f7f9; }
     
-    /* تقليص عرض الحاوية ليكون التصميم ملموم في الوسط */
-    .block-container { max-width: 950px !important; padding-top: 2rem; }
+    /* تقليص عرض الحاوية ليكون التصميم ملموم */
+    .block-container { max-width: 1050px !important; padding-top: 1.5rem; }
 
     /* الهيدر القديم (المسمى يمين والشعار بجانبه) */
     .company-header {
@@ -46,28 +46,28 @@ st.markdown("""
     .content-box { background-color: white; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.04); overflow: hidden; border: 1px solid #eef0f2; }
     .step-header { 
         background: linear-gradient(90deg, #5d5fef, #7a7cfc); 
-        color: white; padding: 12px 25px; font-size: 16px; font-weight: bold;
+        color: white; padding: 10px 25px; font-size: 15px; font-weight: bold;
         display: flex; justify-content: space-between; align-items: center;
     }
     .step-number-circle {
         background-color: rgba(255, 255, 255, 0.2);
-        width: 28px; height: 28px; border-radius: 50%;
+        width: 26px; height: 26px; border-radius: 50%;
         display: flex; align-items: center; justify-content: center;
-        font-size: 14px; border: 1px solid white;
+        font-size: 13px; border: 1px solid white;
     }
-    .form-body { padding: 25px; }
+    .form-body { padding: 20px 25px; }
 
-    /* تقصير عرض مربعات التعبئة بجعلها نحيفة ومنظمة */
+    /* تقصير عرض وطول مربعات التعبئة */
     .stTextInput>div>div>input, .stSelectbox>div>div>div, .stDateInput>div>div>input {
-        min-height: 35px !important; height: 35px !important;
-        text-align: right !important; font-size: 14px !important;
+        min-height: 32px !important; height: 32px !important;
+        text-align: right !important; font-size: 13px !important;
         border-radius: 8px !important;
     }
-    label { font-size: 13px !important; font-weight: bold !important; margin-bottom: 5px !important; }
+    label { font-size: 12px !important; font-weight: bold !important; margin-bottom: 4px !important; color: #475569 !important;}
     </style>
     """, unsafe_allow_html=True)
 
-# 3. الهيدر القديم الفخم
+# 3. الهيدر الرسمي
 st.markdown("""
     <div class="company-header">
         <div class="header-logo">
@@ -83,6 +83,7 @@ st.markdown("""
 if 'page' not in st.session_state:
     st.session_state.page = 'form'
 
+# القائمة الجانبية
 with st.sidebar:
     st.title("القائمة")
     choice = st.selectbox("", ["تقديم طلب جديد", "متابعة الطلبات"], label_visibility="collapsed")
@@ -91,7 +92,7 @@ with st.sidebar:
 # --- صفحة النموذج ---
 if st.session_state.page == 'form':
     
-    # الخطوة 1
+    # الخطوة 1: بيانات مقدم الطلب (مع إضافة تاريخ التعيين وتوزيع الحقول بجانب بعضها)
     st.markdown('<div class="step-block"><div class="step-icon">1</div>', unsafe_allow_html=True)
     with st.container():
         st.markdown('''
@@ -102,16 +103,19 @@ if st.session_state.page == 'form':
                 </div>
                 <div class="form-body">
         ''', unsafe_allow_html=True)
-        # تقسيم الحقول لأعمدة لتقصير عرضها
-        c1, c2, c3, c4 = st.columns(4)
+        
+        # توزيع الحقول الـ 5 في سطر واحد لتكون "قصيرة"
+        c1, c2, c3, c4, c5 = st.columns(5)
         with c1: st.text_input("الرقم الوظيفي")
         with c2: st.text_input("الاسم الكامل")
         with c3: st.text_input("المسمى")
         with c4: st.text_input("القسم")
+        with c5: st.date_input("تاريخ التعيين") # الحقل الجديد
+        
         st.markdown('</div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # الخطوة 2
+    # الخطوة 2: تفاصيل الطلب
     st.markdown('<div class="step-block"><div class="step-icon">2</div>', unsafe_allow_html=True)
     with st.container():
         st.markdown('''
@@ -122,21 +126,29 @@ if st.session_state.page == 'form':
                 </div>
                 <div class="form-body">
         ''', unsafe_allow_html=True)
-        c5, c6, c7 = st.columns([1, 1, 2])
-        with c5: st.selectbox("نوع الطلب", ["نقل", "تعديل", "إنهاء"])
-        with c6: st.date_input("التاريخ", value=datetime.now(), disabled=True)
-        with c7: st.text_input("ملاحظات إضافية")
         
-        st.markdown("<br><b>✍️ التوقيع الرقمي</b>", unsafe_allow_html=True)
-        c8, c9 = st.columns([3, 1])
-        with c8: st.file_uploader("", type=['png', 'jpg'], label_visibility="collapsed")
-        with c9: st.button("إرسال الطلب", use_container_width=True)
+        c6, c7, c8 = st.columns([1, 1, 2])
+        with c6: st.selectbox("نوع الطلب", ["نقل", "تعديل مهنة", "إنهاء خدمة"])
+        with c7: st.date_input("تاريخ السريان", value=datetime.now(), disabled=True)
+        with c8: st.text_input("ملاحظات إضافية")
+        
+        st.markdown("<div style='margin-top:15px;'><b>✍️ التوقيع الرقمي</b></div>", unsafe_allow_html=True)
+        c9, c10 = st.columns([3, 1])
+        with c9: st.file_uploader("", type=['png', 'jpg'], label_visibility="collapsed")
+        with c10: 
+            st.markdown("<div style='height:0px;'></div>", unsafe_allow_html=True)
+            if st.button("إرسال الطلب", use_container_width=True):
+                st.toast("✅ تم الإرسال")
+                time.sleep(0.5)
+                st.session_state.page = 'tracking'
+                st.rerun()
+                
         st.markdown('</div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 # --- صفحة التتبع ---
 elif st.session_state.page == 'tracking':
-    st.info("جاري مراجعة طلبك...")
-    if st.button("رجوع"):
+    st.info("طلبك قيد المراجعة حالياً.")
+    if st.button("العودة"):
         st.session_state.page = 'form'
         st.rerun()
