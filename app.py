@@ -2,7 +2,7 @@ import streamlit as st
 from datetime import datetime
 import time
 
-# 1. إعداد الصفحة والتنسيق (ثابت تماماً كما هو)
+# 1. إعداد الصفحة والتنسيق (ثابت تماماً)
 st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
@@ -36,26 +36,24 @@ st.markdown("""
     .step-header { background: linear-gradient(90deg, #5d5fef, #7a7cfc); color: white; padding: 12px 25px; font-size: 15px; font-weight: bold; }
     .form-body { padding: 20px 25px; }
 
-    /* تنسيق المدخلات */
     .stTextInput>div>div>input, .stSelectbox>div>div>div, .stDateInput>div>div>input { min-height: 32px !important; height: 32px !important; text-align: right !important; border-radius: 8px !important; }
-    /* تنسيق خاص للملاحظات الكبيرة */
     .stTextArea>div>div>textarea { border-radius: 8px !important; text-align: right !important; font-size: 14px !important; }
     label { font-size: 12px !important; font-weight: bold !important; color: #475569 !important;}
 
-    .styled-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; border-radius: 10px; overflow: hidden; }
-    .styled-table thead tr { background-color: #5d5fef; color: white; text-align: right; }
-    .styled-table th, .styled-table td { padding: 12px 15px; border-bottom: 1px solid #eee; font-size: 13px; }
+    /* تنسيق كروت الاعتماد المصغرة */
+    .approval-card {
+        background: #f8fafc; border: 1px dashed #cbd5e1; padding: 10px; border-radius: 10px; margin-bottom: 10px;
+    }
     </style>
     """, unsafe_allow_html=True)
 
-# إدارة الحالة
 if 'page' not in st.session_state:
     st.session_state.page = 'form'
 
 # 3. الهيدر الرسمي
 st.markdown("""
     <div class="company-header">
-        <div class="header-logo"><img src="https://static.alittihad.ae/front/Content/Alittihad/img/logo-desktop.svg"></div>
+        <div class="header-logo"><img src="https://cdn-icons-png.flaticon.com/512/281/281764.png"></div>
         <div class="header-text">
             <h1>مؤسسة المسار المتكامل</h1>
             <p>قسم الموارد البشرية - نموذج الطلبات الإلكتروني</p>
@@ -71,9 +69,8 @@ with st.sidebar:
     elif choice == "متابعة الطلبات": st.session_state.page = 'tracking'
     else: st.session_state.page = 'approvals'
 
-# --- 1. صفحة النموذج ---
+# --- 1. صفحة النموذج (ثابتة مع الملاحظات الكبيرة) ---
 if st.session_state.page == 'form':
-    # الخطوة 1: بيانات الموظف
     st.markdown('<div class="step-block"><div class="step-icon">1</div>', unsafe_allow_html=True)
     with st.container():
         st.markdown('<div class="content-box"><div class="step-header">👤 الخطوة الأولى: بيانات مقدم الطلب</div><div class="form-body">', unsafe_allow_html=True)
@@ -86,31 +83,21 @@ if st.session_state.page == 'form':
         st.markdown('</div></div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # الخطوة 2: تفاصيل الطلب والملاحظات
     st.markdown('<div class="step-block"><div class="step-icon">2</div>', unsafe_allow_html=True)
     with st.container():
         st.markdown('<div class="content-box"><div class="step-header">📝 الخطوة الثانية: تفاصيل الطلب</div><div class="form-body">', unsafe_allow_html=True)
-        
-        # النوع والتاريخ في سطر واحد
         c6, c7 = st.columns([1, 1])
         with c6: req_type = st.selectbox("نوع الطلب", ["نقل داخلي", "تعديل مهنة", "إنهاء خدمة"])
         with c7: st.date_input("تاريخ السريان", value=datetime.now(), disabled=True)
-        
-        # 🟢 الملاحظات في سطر مستقل وبحجم أكبر
         st.text_area("ملاحظات إضافية تفصيلية", placeholder="اكتب تفاصيل طلبك هنا...", height=100)
         
-        if req_type in ["تعديل مهنة", "إنهاء خدمة"]:
-            st.markdown("<div style='margin-top:10px; color:#5d5fef; font-size:13px;'>📎 يرجى إرفاق المستندات الداعمة</div>", unsafe_allow_html=True)
-            st.file_uploader("تحميل المرفقات", type=['pdf', 'png', 'jpg'], key="file_up", label_visibility="collapsed")
-        
-        st.markdown("<br><b>✍️ التوقيع الرقمي</b>", unsafe_allow_html=True)
+        st.markdown("<br><b>✍️ التوقيع الرقمي لمقدم الطلب</b>", unsafe_allow_html=True)
         c9, c10 = st.columns([3, 1])
         with c9: st.file_uploader("توقيعك", type=['png', 'jpg'], key="sig_up", label_visibility="collapsed")
         with c10: submit_btn = st.button("إرسال الطلب", use_container_width=True)
         st.markdown('</div></div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # التحويل التلقائي والنجاح (ثابت في مكانه)
     if submit_btn:
         st.markdown('<div class="step-block"><div class="step-icon">✓</div>', unsafe_allow_html=True)
         with st.container():
@@ -124,20 +111,45 @@ if st.session_state.page == 'form':
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- الصفحات الأخرى (ثابتة كما هي) ---
+# --- 2. صفحة تتبع الطلبات ---
 elif st.session_state.page == 'tracking':
     st.markdown("<h3 style='text-align:right;'>🔍 سجل الطلبات والمتابعة</h3>", unsafe_allow_html=True)
-    st.markdown('<table class="styled-table"><thead><tr><th>رقم الطلب</th><th>النوع</th><th>التاريخ</th><th>الحالة</th></tr></thead><tbody><tr><td>#1028</td><td>تعديل مهنة</td><td>2023-12-20</td><td>قيد الاعتماد</td></tr></tbody></table>', unsafe_allow_html=True)
+    st.markdown('<div class="content-box"><div class="form-body">جدول الطلبات يظهر هنا...</div></div>', unsafe_allow_html=True)
 
+# --- 3. صفحة الاعتمادات (الإضافة المطلوبة) ---
 elif st.session_state.page == 'approvals':
     st.markdown("<h3 style='text-align:right;'>✅ نظام الاعتمادات والموافقات</h3>", unsafe_allow_html=True)
+    
     with st.container():
-        st.markdown('<div class="content-box"><div class="form-body">', unsafe_allow_html=True)
-        ac1, ac2, ac3 = st.columns(3)
-        with ac1: st.selectbox("إعتماد المدير المباشر", ["قيد الانتظار", "موافق", "مرفوض"])
-        with ac2: st.selectbox("إعتماد الموارد البشرية", ["قيد الانتظار", "موافق", "مرفوض"])
-        with ac3: st.selectbox("إعتماد المدير العام", ["قيد الانتظار", "موافق", "مرفوض"])
-        st.button("تحديث الحالة", use_container_width=True)
+        st.markdown('<div class="content-box"><div class="step-header">مراجعة واعتماد الطلبات</div><div class="form-body">', unsafe_allow_html=True)
+        
+        # إنشاء 3 أعمدة لكل جهة اعتماد
+        col_m, col_hr, col_ceo = st.columns(3)
+        
+        with col_m:
+            st.markdown('<div class="approval-card"><b>📌 المدير المباشر</b></div>', unsafe_allow_html=True)
+            st.text_input("الاسم (المدير المباشر)", key="m_name")
+            st.text_input("الوظيفة", value="مدير القسم", key="m_job")
+            st.date_input("التاريخ", key="m_date")
+            st.selectbox("قرار الاعتماد", ["قيد الانتظار", "موافق", "مرفوض"], key="m_dec")
+            st.file_uploader("تحميل التوقيع", type=['png', 'jpg'], key="m_sig")
+
+        with col_hr:
+            st.markdown('<div class="approval-card"><b>📌 الموارد البشرية</b></div>', unsafe_allow_html=True)
+            st.text_input("الاسم (مسؤول HR)", key="hr_name")
+            st.text_input("الوظيفة", value="مدير الموارد البشرية", key="hr_job")
+            st.date_input("التاريخ", key="hr_date")
+            st.selectbox("قرار الاعتماد", ["قيد الانتظار", "موافق", "مرفوض"], key="hr_dec")
+            st.file_uploader("تحميل التوقيع", type=['png', 'jpg'], key="hr_sig")
+
+        with col_ceo:
+            st.markdown('<div class="approval-card"><b>📌 المدير العام</b></div>', unsafe_allow_html=True)
+            st.text_input("الاسم (المدير العام)", key="ceo_name")
+            st.text_input("الوظيفة", value="المدير العام", key="ceo_job")
+            st.date_input("التاريخ", key="ceo_date")
+            st.selectbox("قرار الاعتماد", ["قيد الانتظار", "موافق", "مرفوض"], key="ceo_dec")
+            st.file_uploader("تحميل التوقيع", type=['png', 'jpg'], key="ceo_sig")
+
+        st.markdown("<hr>", unsafe_allow_html=True)
+        st.button("حفظ وحسم جميع الاعتمادات", use_container_width=True)
         st.markdown('</div></div>', unsafe_allow_html=True)
-
-
