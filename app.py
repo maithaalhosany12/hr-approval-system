@@ -117,7 +117,7 @@ if choice == "تقديم طلب جديد":
     with st.container():
         st.markdown('''
             <div class="content-box">
-                <div class="step-header">📝 الخطوة الثانية: تفاصيل موضوع الطلب والاعتماد</div>
+                <div class="step-header">📝 الخطوة الثانية: موضوع الطلب </div>
                 <div class="form-body">
         ''', unsafe_allow_html=True)
         
@@ -141,3 +141,4 @@ if choice == "تقديم طلب جديد":
 
 elif choice == "متابعة الطلبات":
     st.info("صفحة المتابعة جاهزة للاستخدام")
+
