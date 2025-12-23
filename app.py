@@ -5,7 +5,7 @@ import time
 # 1. إعداد الصفحة
 st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. تنسيق CSS: تنظيف الدوائر وضبط المرفقات
+# 2. تنسيق CSS: تنظيف الدوائر وضبط المرفقات والجدول
 st.markdown("""
     <style>
     .main { direction: rtl !important; text-align: right !important; background-color: #f4f7f9; }
@@ -19,7 +19,7 @@ st.markdown("""
     .header-logo img { width: 45px; margin-left: 15px; }
     .header-text h1 { margin: 0; font-size: 19px; color: #2d3436; font-weight: bold; }
 
-    /* الخط الجانبي والدائرة الوحيدة (تم حل مشكلة التكرار) */
+    /* الخط الجانبي والدائرة الوحيدة (تم حل مشكلة التكرار نهائياً) */
     .step-block { position: relative; padding-right: 60px; margin-bottom: 30px; }
     .step-block::before {
         content: ""; position: absolute; right: 28px; top: 45px; bottom: -45px;
@@ -107,18 +107,29 @@ if st.session_state.page == 'form':
 
         st.markdown("<div style='margin-top:15px;'><b>✍️ التوقيع الرقمي</b></div>", unsafe_allow_html=True)
         c9, c10 = st.columns([3, 1])
-        with c9: sig = st.file_uploader("توقيعك", type=['png', 'jpg'], label_visibility="collapsed")
+        with c9: st.file_uploader("توقيعك", type=['png', 'jpg'], label_visibility="collapsed")
         with c10: 
             st.markdown("<div style='height:0px;'></div>", unsafe_allow_html=True)
-            if st.button("إرسال الطلب", use_container_width=True):
-                progress_bar = st.progress(0)
-                for i in range(100):
-                    time.sleep(0.01)
-                    progress_bar.progress(i + 1)
-                st.success("🎉 تم الإرسال بنجاح!")
-                time.sleep(1.5)
-                st.session_state.page = 'tracking'
-                st.rerun()
+            submit_btn = st.button("إرسال الطلب", use_container_width=True)
+        
+        # --- منطق الإرسال المطور (الرسالة العريضة والانتظار) ---
+        if submit_btn:
+            # 1. إظهار شريط التحميل
+            progress_bar = st.progress(0)
+            for i in range(100):
+                time.sleep(0.01)
+                progress_bar.progress(i + 1)
+            
+            # 2. إظهار رسالة النجاح العريضة في منتصف الصفحة
+            st.success("🎉 تم إرسال طلبك بنجاح! جاري تحويلك لصفحة المتابعة...")
+            
+            # 3. الانتظار لمدة ثانيتين لثبات الرسالة ووضوحها
+            time.sleep(2)
+            
+            # 4. الانتقال التلقائي
+            st.session_state.page = 'tracking'
+            st.rerun()
+
         st.markdown('</div></div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
