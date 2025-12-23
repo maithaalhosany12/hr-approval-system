@@ -55,7 +55,7 @@ if 'page' not in st.session_state:
 # 3. الهيدر الرسمي
 st.markdown("""
     <div class="company-header">
-        <div class="header-logo"><img src="https://cdn-icons-png.flaticon.com/512/281/281764.png"></div>
+        <div class="header-logo"><img src="https://cdn1-m.alittihad.ae/store/archive/image/20…d3af45-6bcf-47df-b83a-a4f8e557bd12.jpg"></div>
         <div class="header-text">
             <h1>مؤسسة المسار المتكامل</h1>
             <p>قسم الموارد البشرية - نموذج الطلبات الإلكتروني</p>
@@ -139,3 +139,4 @@ elif st.session_state.page == 'approvals':
         with ac3: st.selectbox("إعتماد المدير العام", ["قيد الانتظار", "موافق", "مرفوض"])
         st.button("تحديث الحالة", use_container_width=True)
         st.markdown('</div></div>', unsafe_allow_html=True)
+
