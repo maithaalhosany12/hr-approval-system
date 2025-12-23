@@ -9,6 +9,8 @@ st.markdown("""
     <style>
     .main { direction: rtl !important; text-align: right !important; background-color: #f4f7f9; }
     .block-container { max-width: 1100px !important; padding-top: 1.5rem; }
+    
+    /* تنسيق الهيدر */
     .company-header {
         display: flex; align-items: center; justify-content: flex-start;
         padding: 15px 25px; background: white; border-radius: 15px; margin-bottom: 25px;
@@ -16,6 +18,8 @@ st.markdown("""
     }
     .header-logo img { width: 45px; margin-left: 15px; }
     .header-text h1 { margin: 0; font-size: 19px; color: #2d3436; font-weight: bold; }
+
+    /* تنسيق الخطوات الجانبية */
     .step-block { position: relative; padding-right: 60px; margin-bottom: 30px; }
     .step-block::before {
         content: ""; position: absolute; right: 28px; top: 45px; bottom: -45px;
@@ -29,11 +33,17 @@ st.markdown("""
         display: flex; align-items: center; justify-content: center;
         font-weight: bold; z-index: 3; font-size: 18px;
     }
+
+    /* بطاقة المحتوى */
     .content-box { background-color: white; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.04); overflow: hidden; border: 1px solid #eef0f2; }
     .step-header { background: linear-gradient(90deg, #5d5fef, #7a7cfc); color: white; padding: 12px 25px; font-size: 15px; font-weight: bold; }
     .form-body { padding: 20px 25px; }
-    .stTextInput>div>div>input, .stSelectbox>div>div>div, .stDateInput>div>div>input { min-height: 32px !important; height: 32px !important; text-align: right !important; font-size: 13px !important; border-radius: 8px !important; }
-    label { font-size: 12px !important; font-weight: bold !important; margin-bottom: 4px !important; color: #475569 !important;}
+
+    /* تقصير الحقول */
+    .stTextInput>div>div>input, .stSelectbox>div>div>div, .stDateInput>div>div>input { min-height: 32px !important; height: 32px !important; text-align: right !important; border-radius: 8px !important; }
+    label { font-size: 12px !important; font-weight: bold !important; color: #475569 !important;}
+
+    /* تنسيق الجدول */
     .styled-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; border-radius: 10px; overflow: hidden; }
     .styled-table thead tr { background-color: #5d5fef; color: white; text-align: right; }
     .styled-table th, .styled-table td { padding: 12px 15px; border-bottom: 1px solid #eee; font-size: 13px; }
@@ -46,16 +56,8 @@ st.markdown("""
 # 2. إدارة الحالة (Session State)
 if 'page' not in st.session_state:
     st.session_state.page = 'form'
-if 'submitted' not in st.session_state:
-    st.session_state.submitted = False
 
-# التحويل التلقائي فور اكتشاف حالة الإرسال بنجاح
-if st.session_state.submitted:
-    st.session_state.submitted = False # إعادة ضبط الحالة للمرة القادمة
-    st.session_state.page = 'tracking'
-    st.rerun()
-
-# 3. الهيدر
+# 3. الهيدر الرسمي
 st.markdown("""
     <div class="company-header">
         <div class="header-logo"><img src="https://cdn-icons-png.flaticon.com/512/281/281764.png"></div>
@@ -75,6 +77,9 @@ with st.sidebar:
 
 # --- صفحة النموذج ---
 if st.session_state.page == 'form':
+    # حاوية مخصصة لرسالة النجاح لتظهر في الأعلى/المنتصف بشكل بارز
+    success_placeholder = st.empty()
+
     # الخطوة 1
     st.markdown('<div class="step-block"><div class="step-icon">1</div>', unsafe_allow_html=True)
     with st.container():
@@ -99,25 +104,28 @@ if st.session_state.page == 'form':
         
         if req_type in ["تعديل مهنة", "إنهاء خدمة"]:
             st.markdown("<div style='margin-top:10px; color:#5d5fef; font-size:13px;'>📎 يرجى إرفاق المستندات الداعمة</div>", unsafe_allow_html=True)
-            st.file_uploader("تحميل المرفقات", type=['pdf', 'png', 'jpg'], label_visibility="collapsed")
+            st.file_uploader("تحميل المرفقات", type=['pdf', 'png', 'jpg'], key="file_up", label_visibility="collapsed")
 
         st.markdown("<div style='margin-top:15px;'><b>✍️ التوقيع الرقمي</b></div>", unsafe_allow_html=True)
         c9, c10 = st.columns([3, 1])
-        with c9: st.file_uploader("توقيعك", type=['png', 'jpg'], label_visibility="collapsed")
+        with c9: st.file_uploader("توقيعك", type=['png', 'jpg'], key="sig_up", label_visibility="collapsed")
         with c10: 
             st.markdown("<div style='height:0px;'></div>", unsafe_allow_html=True)
             if st.button("إرسال الطلب", use_container_width=True):
-                # عرض التحميل والنجاح
+                # عرض التحميل داخل النموذج
                 p_bar = st.progress(0)
                 for i in range(100):
                     time.sleep(0.01)
                     p_bar.progress(i + 1)
                 
-                st.success("🎉 تم إرسال طلبك بنجاح! جاري تحويلك تلقائياً...")
-                time.sleep(2) # ثبات الرسالة للمشاهدة
+                # إظهار رسالة النجاح العريضة في مكان بارز
+                success_placeholder.success("🎉 تم إرسال طلبك بنجاح! جاري تحويلك لصفحة المتابعة...")
                 
-                # تغيير الحالة لرفع العلم (Flag)
-                st.session_state.submitted = True
+                # ثبات الرسالة لمدة ثانيتين (أبطأ لضمان الوضوح)
+                time.sleep(2)
+                
+                # التحويل التلقائي المؤكد
+                st.session_state.page = 'tracking'
                 st.rerun()
 
         st.markdown('</div></div></div>', unsafe_allow_html=True)
