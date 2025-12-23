@@ -1,152 +1,110 @@
 import streamlit as st
-import sqlite3
-from datetime import datetime
 import pandas as pd
-
-# إعداد الصفحة وتنسيق CSS
-st.set_page_config(page_title="نظام شؤون الموظفين", layout="centered")
-
-st.markdown("""
-    <style>
-    .main { background-color: #f8f9fa; }
-    
-    /* تنسيق الدائرة الرقمية بجانب العنوان */
-    .step-number {
-        display: inline-block;
-        width: 35px; height: 35px; border-radius: 50%;
-        background-color: #5d5fef; color: white;
-        text-align: center; line-height: 35px;
-        font-weight: bold; margin-left: 15px;
-        box-shadow: 0 2px 5px rgba(93, 95, 239, 0.3);
-    }
-    
-    /* تنسيق البطاقة الرئيسية */
-    .main-card {
-        background-color: white; padding: 35px; border-radius: 15px;
-        box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-bottom: 30px;
-        border-right: 6px solid #5d5fef;
-    }
-    
-    .section-title {
-        display: flex; align-items: center;
-        margin-bottom: 25px; color: #2d3436;
-        font-size: 20px; font-weight: bold;
-    }
-    
-    .stButton>button { 
-        background-color: #5d5fef; color: white; 
-        width: 100%; border-radius: 12px; height: 3.5em;
-        font-size: 18px; font-weight: bold;
-        transition: 0.3s; margin-top: 20px;
-    }
-    .stButton>button:hover { background-color: #4a4cd9; border: none; }
-    
-    /* تحسين شكل التنبيهات */
-    .stAlert { border-radius: 10px; }
-    </style>
-    """, unsafe_allow_html=True)
-
-def init_db():
-    conn = sqlite3.connect('requests.db')
-    c = conn.cursor()
-    try:
-        # فحص وجود العمود الجديد للتأكد من توافق قاعدة البيانات
-        c.execute("SELECT subject_date FROM requests LIMIT 1")
-    except sqlite3.OperationalError:
-        c.execute("DROP TABLE IF EXISTS requests")
-    
-    c.execute('''CREATE TABLE IF NOT EXISTS requests
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  job_number TEXT, name TEXT, job_title TEXT, unit TEXT, appt_date TEXT,
-                  subject_type TEXT, subject_date TEXT, target_entity TEXT, notes TEXT, 
-                  submit_date TEXT, signature TEXT, status TEXT, stage INTEGER)''')
-    conn.commit()
-    conn.close()
+from database import init_db, get_appeal_count
+import sqlite3
+from datetime import datetime, timedelta
 
 init_db()
 
-# القائمة الجانبية
-menu = ["تقديم طلب جديد", "متابعة الطلبات", "الاعتمادات الإدارية"]
-choice = st.sidebar.radio("القائمة الرئيسية", menu)
+st.title("📋 Personnel Request & Approval System")
 
-if choice == "تقديم طلب جديد":
-    st.markdown("<h1 style='text-align: center; color: #2d3436;'>📝 نموذج تقديم طلب إداري</h1>", unsafe_allow_html=True)
-    st.markdown("<br>", unsafe_allow_html=True)
+menu = ["Submit Request", "Track Application", "Approval Portal"]
+choice = st.sidebar.selectbox("Navigation", menu)
 
-    # --- الخطوة الأولى: بيانات مقدم الطلب ---
-    st.markdown(f'''
-        <div class="main-card">
-            <div class="section-title">
-                <span class="step-number">1</span> بيانات مقدم الطلب
-            </div>
-    ''', unsafe_allow_html=True)
-    
-    col1, col2 = st.columns(2)
-    with col1:
-        job_number = st.text_input("الرقم الوظيفي")
-        full_name = st.text_input("الاسم الكامل")
-    with col2:
-        job_title = st.text_input("المسمى الوظيفي")
-        unit = st.text_input("الوحدة / القسم")
-    appt_date = st.date_input("تاريخ التعيين", key="appt")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # --- الخطوة الثانية: تفاصيل الطلب + التوقيع (تم الدمج هنا) ---
-    st.markdown(f'''
-        <div class="main-card">
-            <div class="section-title">
-                <span class="step-number">2</span> تفاصيل الطلب والاعتماد
-            </div>
-    ''', unsafe_allow_html=True)
-    
-    col_sub1, col_sub2 = st.columns(2)
-    with col_sub1:
-        subject_type = st.selectbox("نوع الطلب", ["نقل", "تغيير مهنة", "إنهاء خدمة"])
-    with col_sub2:
-        subject_date = st.date_input("تاريخ سريان الطلب", key="subj_date")
-    
-    if subject_type == "نقل":
-        target_entity = st.text_input("الجهة المطلوب النقل إليها")
-    else:
-        target_entity = ""
+# --- STAGE 1: SUBMISSION ---
+if choice == "Submit Request":
+    st.header("New Applicant Request")
+    with st.form("request_form"):
+        col1, col2 = st.columns(2)
+        number = col1.text_input("Service Number")
+        unit = col2.text_input("Unit")
+        name = st.text_input("Full Name")
+        appt_date = st.date_input("Appointment Date")
         
-    if subject_type in ["تغيير مهنة", "إنهاء خدمة"]:
-        st.info(f"💡 يرجى إرفاق المستندات المطلوبة لحالة {subject_type}")
-        st.file_uploader("رفع المرفق الرسمي")
+        subject = st.selectbox("Subject of Request", 
+                               ["Change of Profession", "Transfer", "Termination of Service"])
         
-    notes = st.text_area("ملاحظات الموظف")
-    
-    st.markdown("<hr style='border: 0.5px solid #eee;'>", unsafe_allow_html=True)
-    st.markdown("<b>✍️ الإقرار والتوقيع الرقمي:</b>", unsafe_allow_html=True)
-    signature = st.text_input("اكتب اسمك الثلاثي للإقرار بصحة البيانات")
-    
-    if st.button("إرسال الطلب للاعتماد النهائي"):
-        if job_number and full_name and signature:
+        attachment = None
+        if subject in ["Change of Profession", "Termination of Service"]:
+            attachment = st.file_uploader("Upload Required Document")
+
+        if st.form_submit_button("Submit Request"):
             conn = sqlite3.connect('requests.db')
             c = conn.cursor()
-            c.execute("""INSERT INTO requests 
-                      (job_number, name, job_title, unit, appt_date, subject_type, subject_date,
-                       target_entity, notes, submit_date, signature, status, stage) 
-                      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                      (job_number, full_name, job_title, unit, str(appt_date), subject_type, str(subject_date),
-                       target_entity, notes, datetime.now().strftime("%Y-%m-%d"), signature, "بانتظار موافقة المسؤول", 1))
+            c.execute("INSERT INTO requests (number, unit, name, appt_date, subject, submit_date, status, stage) VALUES (?,?,?,?,?,?,?,?)",
+                      (number, unit, name, str(appt_date), subject, datetime.now(), "Pending Supervisor", 1))
             conn.commit()
-            st.success("✅ تم استلام طلبك بنجاح وجاري مراجعته.")
-            st.balloons()
-        else:
-            st.error("⚠️ يرجى تعبئة كافة الحقول المطلوبة والتوقيع قبل الإرسال.")
-    st.markdown('</div>', unsafe_allow_html=True)
+            st.success("Request submitted successfully!")
 
-elif choice == "متابعة الطلبات":
-    st.markdown('<div class="main-card">', unsafe_allow_html=True)
-    st.header("🔍 استعلام عن حالة المعاملة")
-    search_id = st.number_input("أدخل رقم المعاملة", step=1, value=0)
-    if search_id > 0:
+# --- STAGE 2: TRACKING ---
+elif choice == "Track Application":
+    st.header("Application Status & History")
+    req_id = st.number_input("Enter Request ID to track", step=1)
+    
+    if req_id:
         conn = sqlite3.connect('requests.db')
-        df = pd.read_sql(f"SELECT * FROM requests WHERE id = {search_id}", conn)
-        if not df.empty:
-            st.info(f"حالة الطلب الحالية: {df['status'].values[0]}")
-            st.progress(int(df['stage'].values[0]) / 3)
+        df_req = pd.read_sql(f"SELECT * FROM requests WHERE id = {req_id}", conn)
+        df_appr = pd.read_sql(f"SELECT stage_name, decision, actor_name, processed_at, duration_hours FROM approvals WHERE request_id = {req_id}", conn)
+        
+        if not df_req.empty:
+            st.write(f"**Current Status:** {df_req['status'].values[0]}")
+            st.write(f"**Current Stage:** {df_req['stage'].values[0]} / 3")
+            
+            st.subheader("Approval Timeline")
+            st.table(df_appr)
+            
+            # Appeal Logic
+            appeal_count = get_appeal_count(req_id)
+            st.info(f"Appeals submitted: {appeal_count} / 3")
+            
+            if appeal_count < 3:
+                if st.button("Submit Appeal"):
+                    c = conn.cursor()
+                    c.execute("INSERT INTO appeals (request_id, appeal_count, appeal_date) VALUES (?,?,?)",
+                              (req_id, appeal_count + 1, datetime.now()))
+                    conn.commit()
+                    st.warning(f"Appeal #{appeal_count + 1} registered.")
+            else:
+                st.error("Maximum limit of 3 appeals reached.")
         else:
-            st.error("رقم المعاملة غير موجود.")
-    st.markdown('</div>', unsafe_allow_html=True)
+            st.error("Request ID not found.")
+
+# --- STAGE 3: APPROVAL PORTAL ---
+elif choice == "Approval Portal":
+    st.header("Authorized Approvals")
+    role = st.selectbox("Approver Role", ["Direct Supervisor", "Unit Commander", "Human Resources"])
+    
+    conn = sqlite3.connect('requests.db')
+    # Filter requests based on stage
+    stage_map = {"Direct Supervisor": 1, "Unit Commander": 2, "Human Resources": 3}
+    current_stage_idx = stage_map[role]
+    
+    pending_reqs = pd.read_sql(f"SELECT * FROM requests WHERE stage = {current_stage_idx}", conn)
+    st.dataframe(pending_reqs)
+    
+    if not pending_reqs.empty:
+        selected_id = st.selectbox("Select Request ID to Action", pending_reqs['id'])
+        with st.form("approval_form"):
+            actor_name = st.text_input("Name")
+            rank = st.text_input("Rank")
+            decision = st.radio("Decision", ["Agree", "Disagree"])
+            comments = st.text_area("Comments")
+            
+            if st.form_submit_button("Submit Decision"):
+                # Calculate processing time
+                start_time_str = pending_reqs[pending_reqs['id'] == selected_id]['submit_date'].values[0]
+                start_time = datetime.strptime(start_time_str, '%Y-%m-%d %H:%M:%S.%f')
+                duration = (datetime.now() - start_time).total_seconds() / 3600 # hours
+                
+                c = conn.cursor()
+                # Update Request
+                new_stage = current_stage_idx + 1 if decision == "Agree" else current_stage_idx
+                new_status = f"Approved by {role}" if decision == "Agree" else f"Rejected by {role}"
+                
+                c.execute("UPDATE requests SET stage = ?, status = ? WHERE id = ?", (new_stage, new_status, selected_id))
+                
+                # Log Approval
+                c.execute("INSERT INTO approvals VALUES (?,?,?,?,?,?,?)",
+                          (selected_id, role, actor_name, decision, comments, datetime.now(), round(duration, 2)))
+                conn.commit()
+                st.success("Decision recorded.")
