@@ -3,7 +3,7 @@ import sqlite3
 from datetime import datetime
 import pandas as pd
 
-# إعداد الصفحة وتنسيق CSS مخصص للأرقام داخل العناوين
+# إعداد الصفحة وتنسيق CSS
 st.set_page_config(page_title="نظام شؤون الموظفين", layout="centered")
 
 st.markdown("""
@@ -37,9 +37,12 @@ st.markdown("""
         background-color: #5d5fef; color: white; 
         width: 100%; border-radius: 12px; height: 3.5em;
         font-size: 18px; font-weight: bold;
-        transition: 0.3s;
+        transition: 0.3s; margin-top: 20px;
     }
     .stButton>button:hover { background-color: #4a4cd9; border: none; }
+    
+    /* تحسين شكل التنبيهات */
+    .stAlert { border-radius: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -47,6 +50,7 @@ def init_db():
     conn = sqlite3.connect('requests.db')
     c = conn.cursor()
     try:
+        # فحص وجود العمود الجديد للتأكد من توافق قاعدة البيانات
         c.execute("SELECT subject_date FROM requests LIMIT 1")
     except sqlite3.OperationalError:
         c.execute("DROP TABLE IF EXISTS requests")
@@ -69,7 +73,7 @@ if choice == "تقديم طلب جديد":
     st.markdown("<h1 style='text-align: center; color: #2d3436;'>📝 نموذج تقديم طلب إداري</h1>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- القسم الأول ---
+    # --- الخطوة الأولى: بيانات مقدم الطلب ---
     st.markdown(f'''
         <div class="main-card">
             <div class="section-title">
@@ -87,11 +91,11 @@ if choice == "تقديم طلب جديد":
     appt_date = st.date_input("تاريخ التعيين", key="appt")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- القسم الثاني ---
+    # --- الخطوة الثانية: تفاصيل الطلب + التوقيع (تم الدمج هنا) ---
     st.markdown(f'''
         <div class="main-card">
             <div class="section-title">
-                <span class="step-number">2</span> تفاصيل موضوع الطلب
+                <span class="step-number">2</span> تفاصيل الطلب والاعتماد
             </div>
     ''', unsafe_allow_html=True)
     
@@ -107,22 +111,14 @@ if choice == "تقديم طلب جديد":
         target_entity = ""
         
     if subject_type in ["تغيير مهنة", "إنهاء خدمة"]:
-        st.info(f"يرجى إرفاق المستندات المطلوبة لحالة {subject_type}")
+        st.info(f"💡 يرجى إرفاق المستندات المطلوبة لحالة {subject_type}")
         st.file_uploader("رفع المرفق الرسمي")
         
     notes = st.text_area("ملاحظات الموظف")
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # --- القسم الثالث ---
-    st.markdown(f'''
-        <div class="main-card">
-            <div class="section-title">
-                <span class="step-number">3</span> الاعتماد والتوقيع
-            </div>
-    ''', unsafe_allow_html=True)
     
-    signature = st.text_input("التوقيع الرقمي (اكتب الاسم الثلاثي للإقرار)")
-    st.markdown("<br>", unsafe_allow_html=True)
+    st.markdown("<hr style='border: 0.5px solid #eee;'>", unsafe_allow_html=True)
+    st.markdown("<b>✍️ الإقرار والتوقيع الرقمي:</b>", unsafe_allow_html=True)
+    signature = st.text_input("اكتب اسمك الثلاثي للإقرار بصحة البيانات")
     
     if st.button("إرسال الطلب للاعتماد النهائي"):
         if job_number and full_name and signature:
@@ -138,11 +134,19 @@ if choice == "تقديم طلب جديد":
             st.success("✅ تم استلام طلبك بنجاح وجاري مراجعته.")
             st.balloons()
         else:
-            st.error("⚠️ يرجى تعبئة كافة الحقول المطلوبة والتوقيع.")
+            st.error("⚠️ يرجى تعبئة كافة الحقول المطلوبة والتوقيع قبل الإرسال.")
     st.markdown('</div>', unsafe_allow_html=True)
 
 elif choice == "متابعة الطلبات":
     st.markdown('<div class="main-card">', unsafe_allow_html=True)
     st.header("🔍 استعلام عن حالة المعاملة")
-    # ... كود المتابعة ...
+    search_id = st.number_input("أدخل رقم المعاملة", step=1, value=0)
+    if search_id > 0:
+        conn = sqlite3.connect('requests.db')
+        df = pd.read_sql(f"SELECT * FROM requests WHERE id = {search_id}", conn)
+        if not df.empty:
+            st.info(f"حالة الطلب الحالية: {df['status'].values[0]}")
+            st.progress(int(df['stage'].values[0]) / 3)
+        else:
+            st.error("رقم المعاملة غير موجود.")
     st.markdown('</div>', unsafe_allow_html=True)
