@@ -2,10 +2,9 @@ import streamlit as st
 from datetime import datetime
 import time
 
-# 1. إعداد الصفحة
+# 1. إعداد الصفحة والتنسيق
 st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. تنسيق CSS
 st.markdown("""
     <style>
     .main { direction: rtl !important; text-align: right !important; background-color: #f4f7f9; }
@@ -35,8 +34,6 @@ st.markdown("""
     .form-body { padding: 20px 25px; }
     .stTextInput>div>div>input, .stSelectbox>div>div>div, .stDateInput>div>div>input { min-height: 32px !important; height: 32px !important; text-align: right !important; font-size: 13px !important; border-radius: 8px !important; }
     label { font-size: 12px !important; font-weight: bold !important; margin-bottom: 4px !important; color: #475569 !important;}
-    
-    /* تنسيق الجدول */
     .styled-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; border-radius: 10px; overflow: hidden; }
     .styled-table thead tr { background-color: #5d5fef; color: white; text-align: right; }
     .styled-table th, .styled-table td { padding: 12px 15px; border-bottom: 1px solid #eee; font-size: 13px; }
@@ -46,9 +43,17 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# إدارة الصفحات بشكل مستقل
-if 'page_now' not in st.session_state:
-    st.session_state.page_now = 'تقديم طلب جديد'
+# 2. إدارة الحالة (Session State)
+if 'page' not in st.session_state:
+    st.session_state.page = 'form'
+if 'submitted' not in st.session_state:
+    st.session_state.submitted = False
+
+# التحويل التلقائي فور اكتشاف حالة الإرسال بنجاح
+if st.session_state.submitted:
+    st.session_state.submitted = False # إعادة ضبط الحالة للمرة القادمة
+    st.session_state.page = 'tracking'
+    st.rerun()
 
 # 3. الهيدر
 st.markdown("""
@@ -61,15 +66,15 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-# 4. القائمة الجانبية (تتحكم بشكل كامل في الحالة)
+# القائمة الجانبية
 with st.sidebar:
     st.title("القائمة")
-    menu = st.radio("اختر الوجهة:", ["تقديم طلب جديد", "متابعة الطلبات"], key="main_menu")
-    st.session_state.page_now = menu
+    menu = st.radio("اختر الوجهة:", ["تقديم طلب جديد", "متابعة الطلبات"], index=0 if st.session_state.page == 'form' else 1)
+    if menu == "تقديم طلب جديد": st.session_state.page = 'form'
+    else: st.session_state.page = 'tracking'
 
 # --- صفحة النموذج ---
-if st.session_state.page_now == 'تقديم طلب جديد':
-    
+if st.session_state.page == 'form':
     # الخطوة 1
     st.markdown('<div class="step-block"><div class="step-icon">1</div>', unsafe_allow_html=True)
     with st.container():
@@ -101,33 +106,25 @@ if st.session_state.page_now == 'تقديم طلب جديد':
         with c9: st.file_uploader("توقيعك", type=['png', 'jpg'], label_visibility="collapsed")
         with c10: 
             st.markdown("<div style='height:0px;'></div>", unsafe_allow_html=True)
-            submit = st.button("إرسال الطلب الآن", use_container_width=True)
-        
-        if submit:
-            # تنفيذ شريط التحميل أولاً
-            p_bar = st.progress(0)
-            for i in range(100):
-                time.sleep(0.01)
-                p_bar.progress(i + 1)
-            
-            # عرض رسالة النجاح وتغيير الحالة فوراً
-            st.success("🎉 تم إرسال طلبك بنجاح!")
-            
-            # استخدام زر "انقر هنا للمتابعة" كحل احتياطي مؤكد في حال فشل rerun
-            if st.button("انقر هنا لعرض قائمة الطلبات ⬅️"):
-                st.session_state.page_now = 'متابعة الطلبات'
+            if st.button("إرسال الطلب", use_container_width=True):
+                # عرض التحميل والنجاح
+                p_bar = st.progress(0)
+                for i in range(100):
+                    time.sleep(0.01)
+                    p_bar.progress(i + 1)
+                
+                st.success("🎉 تم إرسال طلبك بنجاح! جاري تحويلك تلقائياً...")
+                time.sleep(2) # ثبات الرسالة للمشاهدة
+                
+                # تغيير الحالة لرفع العلم (Flag)
+                st.session_state.submitted = True
                 st.rerun()
-            
-            # محاولة التحويل التلقائي مع تأخير بسيط
-            time.sleep(1)
-            st.session_state.page_now = 'متابعة الطلبات'
-            st.rerun()
 
         st.markdown('</div></div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- صفحة التتبع ---
-elif st.session_state.page_now == 'متابعة الطلبات':
+# --- صفحة التتبع بالجدول ---
+elif st.session_state.page == 'tracking':
     st.markdown("<h3 style='text-align:right;'>🔍 سجل الطلبات والمتابعة</h3>", unsafe_allow_html=True)
     
     table_html = """
@@ -145,5 +142,5 @@ elif st.session_state.page_now == 'متابعة الطلبات':
     st.markdown(table_html, unsafe_allow_html=True)
     
     if st.button("العودة لتقديم طلب جديد"):
-        st.session_state.page_now = 'تقديم طلب جديد'
+        st.session_state.page = 'form'
         st.rerun()
