@@ -5,49 +5,38 @@ import time
 # 1. إعداد الصفحة
 st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. تنسيق CSS مخصص للتوجيه الجديد
+# 2. تنسيق CSS: دمج الشعار مع النص وتصغير المساحات
 st.markdown("""
     <style>
-    /* إعدادات الصفحة العامة (يمين لليسار) */
+    /* إعدادات الصفحة العامة */
     .main { background-color: #f4f7f9; direction: rtl; }
-    
-    /* تقليص عرض الحاوية لتكون ملمومة */
     .block-container { max-width: 850px !important; padding-top: 1rem; }
 
-    /* الهيدر الجديد: المسمى يمين والشعار في الوسط */
-    .custom-header {
+    /* الهيدر الجديد: الشعار والنص ملتصقان جهة اليمين */
+    .official-header {
         display: flex;
         align-items: center;
-        justify-content: space-between;
+        justify-content: flex-start; /* ليكون كل شيء بجهة اليمين */
         background-color: white;
         padding: 15px 25px;
         border-radius: 15px;
-        margin-bottom: 30px;
+        margin-bottom: 25px;
         box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-        position: relative;
+        border-right: 6px solid #5d5fef;
     }
 
-    /* مسمى القسم (أقصى اليمين) */
-    .header-title-right {
-        text-align: right;
-        flex: 1;
-    }
-    .header-title-right h1 { margin: 0; font-size: 18px; color: #2d3436; font-weight: bold; }
-    .header-title-right p { margin: 0; font-size: 12px; color: #5d5fef; font-weight: 600; }
-
-    /* اللوغو (في الوسط تماماً) */
-    .header-logo-center {
-        position: absolute;
-        left: 50%;
-        transform: translateX(-50%);
+    .header-logo {
+        margin-left: 15px; /* مسافة بين الشعار والنص */
         display: flex;
-        justify-content: center;
         align-items: center;
     }
-    .header-logo-center img { width: 45px; }
+    .header-logo img { width: 45px; height: auto; }
 
-    /* موازنة الهيدر (جهة اليسار فارغة للحفاظ على التمركز) */
-    .header-left-space { flex: 1; }
+    .header-text {
+        text-align: right;
+    }
+    .header-text h1 { margin: 0; font-size: 18px; color: #2d3436; font-weight: bold; line-height: 1.2; }
+    .header-text p { margin: 0; font-size: 13px; color: #5d5fef; font-weight: 600; }
 
     /* بطاقة المحتوى والعناوين */
     .content-box { 
@@ -60,7 +49,6 @@ st.markdown("""
         background: linear-gradient(90deg, #5d5fef, #7a7cfc); 
         color: white; padding: 10px 20px; font-size: 16px; font-weight: bold;
         display: flex; justify-content: space-between; align-items: center;
-        direction: rtl;
     }
 
     .step-number-circle {
@@ -78,29 +66,24 @@ st.markdown("""
         padding: 0px 10px !important; font-size: 14px !important;
         text-align: right; border-radius: 8px !important;
     }
-
-    label { text-align: right !important; width: 100%; display: block !important; margin-bottom: 5px !important; }
     </style>
     """, unsafe_allow_html=True)
 
 if 'page' not in st.session_state:
     st.session_state.page = 'form'
 
-# 3. الهيدر المخصص (الشعار في الوسط والمسمى يمين)
+# 3. الهيدر الرسمي المدمج (يمين)
 st.markdown("""
-    <div class="custom-header">
-        <div class="header-title-right">
-            <h1>مؤسسة المسار المتكامل</h1>
-            <p>قسم شؤون الموظفين - نموذج إلكتروني</p>
-        </div>
-        <div class="header-logo-center">
+    <div class="official-header">
+        <div class="header-logo">
             <img src="https://cdn-icons-png.flaticon.com/512/281/281764.png" alt="Logo">
         </div>
-        <div class="header-left-space"></div>
+        <div class="header-text">
+            <h1>مؤسسة المسار المتكامل</h1>
+            <p>قسم شؤون الموظفين - نموذج الطلبات الإلكتروني</p>
+        </div>
     </div>
     """, unsafe_allow_html=True)
-
-
 
 # القائمة الجانبية
 with st.sidebar:
@@ -128,7 +111,6 @@ if st.session_state.page == 'form':
         c3, c4 = st.columns(2)
         job_title = c3.text_input("المسمى الوظيفي")
         unit = c4.text_input("الوحدة / القسم")
-        
         st.markdown('</div></div>', unsafe_allow_html=True)
 
     # الخطوة 2
@@ -160,8 +142,7 @@ if st.session_state.page == 'form':
                 st.session_state.page = 'tracking'
                 st.rerun()
             else:
-                st.error("⚠️ يرجى تعبئة الحقول المطلوبة ورفع التوقيع")
-                
+                st.error("⚠️ يرجى تعبئة الحقول ورفع التوقيع")
         st.markdown('</div></div>', unsafe_allow_html=True)
 
 # --- صفحة التتبع ---
