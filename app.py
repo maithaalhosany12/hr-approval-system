@@ -5,30 +5,57 @@ import time
 # 1. إعداد الصفحة
 st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. تنسيق CSS: نقل الأرقام لليسار، إزالة تاريخ الهيدر، والمحاذاة لليمين
+# 2. تنسيق CSS مخصص للتوجيه الجديد
 st.markdown("""
     <style>
     /* إعدادات الصفحة العامة (يمين لليسار) */
     .main { background-color: #f4f7f9; direction: rtl; }
     
     /* تقليص عرض الحاوية لتكون ملمومة */
-    .block-container { max-width: 850px !important; padding-top: 1.5rem; }
+    .block-container { max-width: 850px !important; padding-top: 1rem; }
 
-    /* هيدر الشركة بدون تاريخ */
-    .company-header {
-        display: flex; align-items: center; 
-        padding: 12px 20px; background: white; border-radius: 12px; margin-bottom: 25px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-right: 6px solid #5d5fef;
+    /* الهيدر الجديد: المسمى يمين والشعار في الوسط */
+    .custom-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        background-color: white;
+        padding: 15px 25px;
+        border-radius: 15px;
+        margin-bottom: 30px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        position: relative;
     }
 
-    /* بطاقة المحتوى */
+    /* مسمى القسم (أقصى اليمين) */
+    .header-title-right {
+        text-align: right;
+        flex: 1;
+    }
+    .header-title-right h1 { margin: 0; font-size: 18px; color: #2d3436; font-weight: bold; }
+    .header-title-right p { margin: 0; font-size: 12px; color: #5d5fef; font-weight: 600; }
+
+    /* اللوغو (في الوسط تماماً) */
+    .header-logo-center {
+        position: absolute;
+        left: 50%;
+        transform: translateX(-50%);
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .header-logo-center img { width: 45px; }
+
+    /* موازنة الهيدر (جهة اليسار فارغة للحفاظ على التمركز) */
+    .header-left-space { flex: 1; }
+
+    /* بطاقة المحتوى والعناوين */
     .content-box { 
         background-color: white; border-radius: 12px; 
         box-shadow: 0 6px 15px rgba(0,0,0,0.04); overflow: hidden; 
         border: 1px solid #eef0f2; margin-bottom: 20px;
     }
 
-    /* شريط العنوان مع الرقم على اليسار */
     .step-header { 
         background: linear-gradient(90deg, #5d5fef, #7a7cfc); 
         color: white; padding: 10px 20px; font-size: 16px; font-weight: bold;
@@ -36,7 +63,6 @@ st.markdown("""
         direction: rtl;
     }
 
-    /* دائرة الرقم لتكون على يسار العنوان */
     .step-number-circle {
         background-color: rgba(255, 255, 255, 0.2);
         width: 28px; height: 28px; border-radius: 50%;
@@ -53,7 +79,6 @@ st.markdown("""
         text-align: right; border-radius: 8px !important;
     }
 
-    /* مراجعة النصوص لتكون لليمين */
     label { text-align: right !important; width: 100%; display: block !important; margin-bottom: 5px !important; }
     </style>
     """, unsafe_allow_html=True)
@@ -61,20 +86,21 @@ st.markdown("""
 if 'page' not in st.session_state:
     st.session_state.page = 'form'
 
-# 5. هيدر الشركة المحدث (بدون تاريخ)
-st.markdown(f"""
-    <div class="company-header">
-        <div style="display: flex; align-items: center;">
-            <div style="background:#5d5fef; padding:6px; border-radius:8px; margin-left:12px; display:flex;">
-                <img src="https://cdn-icons-png.flaticon.com/512/281/281764.png" width="24" style="filter: brightness(0) invert(1);">
-            </div>
-            <div>
-                <div style="font-weight: bold; font-size: 17px; color: #2d3436;"></div>
-                <div style="font-size: 12px; color: #666;">قسم الموارد البشرية</div>
-            </div>
+# 3. الهيدر المخصص (الشعار في الوسط والمسمى يمين)
+st.markdown("""
+    <div class="custom-header">
+        <div class="header-title-right">
+            <h1>مؤسسة المسار المتكامل</h1>
+            <p>قسم شؤون الموظفين - نموذج إلكتروني</p>
         </div>
+        <div class="header-logo-center">
+            <img src="https://cdn-icons-png.flaticon.com/512/281/281764.png" alt="Logo">
+        </div>
+        <div class="header-left-space"></div>
     </div>
     """, unsafe_allow_html=True)
+
+
 
 # القائمة الجانبية
 with st.sidebar:
@@ -89,7 +115,7 @@ if st.session_state.page == 'form':
         st.markdown('''
             <div class="content-box">
                 <div class="step-header">
-                    <span>  بيانات مقدم الطلب</span>
+                    <span>👤 الخطوة الأولى: بيانات مقدم الطلب</span>
                     <div class="step-number-circle">1</div>
                 </div>
                 <div class="form-body">
@@ -110,7 +136,7 @@ if st.session_state.page == 'form':
         st.markdown('''
             <div class="content-box">
                 <div class="step-header">
-                    <span> تفاصيل موضوع الطلب</span>
+                    <span>📝 الخطوة الثانية: تفاصيل موضوع الطلب</span>
                     <div class="step-number-circle">2</div>
                 </div>
                 <div class="form-body">
@@ -126,7 +152,6 @@ if st.session_state.page == 'form':
         notes = st.text_input("ملاحظات إضافية")
         
         st.markdown("<br>", unsafe_allow_html=True)
-        # زر الإرسال
         c_btn, _ = st.columns([1, 3])
         if c_btn.button("إرسال الطلب الآن"):
             if job_num and full_name and sig_file:
@@ -146,4 +171,3 @@ elif st.session_state.page == 'tracking':
     if st.button("العودة"):
         st.session_state.page = 'form'
         st.rerun()
-
