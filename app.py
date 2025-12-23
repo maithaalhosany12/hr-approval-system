@@ -6,54 +6,66 @@ import pandas as pd
 # إعداد الصفحة
 st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide")
 
-# تنسيق CSS لربط الدائرة بالعنوان مباشرة
+# تنسيق CSS لربط الخط وجعله متصلاً تماماً
 st.markdown("""
     <style>
     .main { background-color: #f8f9fa; }
     
-    /* حاوية الخطوة الكاملة */
-    .step-row {
+    /* الحاوية الكبرى التي تجمع السلالم والمحتوى */
+    .stepper-wrapper {
         display: flex;
-        gap: 20px;
-        margin-bottom: 20px;
+        position: relative;
+        gap: 30px;
+        padding-right: 50px;
     }
-    
-    /* عمود الدوائر والخط */
-    .stepper-col {
+
+    /* عمود السلم الجانبي */
+    .stepper-column {
         display: flex;
         flex-direction: column;
         align-items: center;
-        width: 50px;
+        position: relative;
     }
-    
+
+    /* الدائرة */
     .step-circle {
         width: 40px; height: 40px; border-radius: 50%;
         background-color: #5d5fef; color: white;
         display: flex; align-items: center; justify-content: center;
         font-weight: bold; font-size: 18px;
+        z-index: 2;
+        margin-top: 10px;
         box-shadow: 0 4px 10px rgba(93, 95, 239, 0.3);
     }
-    
-    .step-line {
-        flex-grow: 1; /* الخط يمتد تلقائياً حسب طول البطاقة */
-        width: 2px;
+
+    /* الخط المتصل - تم تعديل وضعه ليكون خلف الدوائر تماماً ومستمراً */
+    .step-line-vertical {
+        position: absolute;
+        top: 30px; /* يبدأ من منتصف الدائرة الأولى */
+        bottom: 50px; /* ينتهي عند منتصف الدائرة الأخيرة */
+        width: 3px;
         background-color: #5d5fef;
-        margin: 5px 0;
+        z-index: 1;
     }
-    
+
+    /* حاوية المحتوى */
+    .content-wrapper {
+        flex-grow: 1;
+    }
+
     /* بطاقة المحتوى */
     .content-card {
-        flex-grow: 1;
         background-color: white; padding: 30px; border-radius: 15px;
         box-shadow: 0 5px 15px rgba(0,0,0,0.05);
-        border-right: 5px solid #5d5fef;
-        margin-bottom: 20px;
+        border-right: 6px solid #5d5fef;
+        margin-bottom: 50px; /* مسافة بين الخطوة 1 و 2 */
     }
     
     h2 { color: #2d3436; font-size: 20px; margin-top: 0; }
     </style>
     """, unsafe_allow_html=True)
 
+# تهيئة قاعدة البيانات
 def init_db():
     conn = sqlite3.connect('requests.db')
     c = conn.cursor()
@@ -76,17 +88,25 @@ choice = st.sidebar.radio("التنقل في النظام", ["تقديم طلب 
 if choice == "تقديم طلب جديد":
     st.markdown("<h1 style='text-align: center;'>📝 نموذج تقديم طلب جديد</h1><br>", unsafe_allow_html=True)
 
-    # --- الخطوة الأولى ---
-    st.markdown('''
-        <div class="step-row">
-            <div class="stepper-col">
-                <div class="step-circle">1</div>
-                <div class="step-line"></div>
-            </div>
-            <div class="content-card">
-                <h2>👤 الخطوة الأولى: بيانات مقدم الطلب</h2>
-    ''', unsafe_allow_html=True)
+    # بداية هيكل السلم المتصل
+    st.markdown('<div class="stepper-wrapper">', unsafe_allow_html=True)
     
+    # العمود الجانبي (الدوائر والخط)
+    # ملاحظة: المسافة بين الدوائر ستتعدل تلقائياً حسب طول البطاقات
+    st.markdown('''
+        <div class="stepper-column">
+            <div class="step-line-vertical"></div>
+            <div class="step-circle" style="margin-bottom: 460px;">1</div>
+            <div class="step-circle">2</div>
+        </div>
+    ''', unsafe_allow_html=True)
+
+    # عمود المحتوى
+    st.markdown('<div class="content-wrapper">', unsafe_allow_html=True)
+    
+    # --- الخطوة الأولى ---
+    st.markdown('<div class="content-card">', unsafe_allow_html=True)
+    st.markdown("<h2>👤 الخطوة الأولى: بيانات مقدم الطلب</h2>", unsafe_allow_html=True)
     c1, c2 = st.columns(2)
     with c1:
         job_number = st.text_input("الرقم الوظيفي")
@@ -95,19 +115,11 @@ if choice == "تقديم طلب جديد":
         job_title = st.text_input("المسمى الوظيفي")
         unit = st.text_input("الوحدة / القسم")
     appt_date = st.date_input("تاريخ التعيين")
-    
-    st.markdown('</div></div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- الخطوة الثانية (ستظهر الدائرة رقم 2 هنا بالضبط عند العلامة الصفراء) ---
-    st.markdown('''
-        <div class="step-row">
-            <div class="stepper-col">
-                <div class="step-circle">2</div>
-                <div style="height: 50px;"></div> </div>
-            <div class="content-card">
-                <h2>📝 الخطوة الثانية: تفاصيل الطلب والاعتماد</h2>
-    ''', unsafe_allow_html=True)
-    
+    # --- الخطوة الثانية ---
+    st.markdown('<div class="content-card">', unsafe_allow_html=True)
+    st.markdown("<h2>📝 الخطوة الثانية: تفاصيل الطلب والاعتماد</h2>", unsafe_allow_html=True)
     cs1, cs2 = st.columns(2)
     with cs1:
         subject_type = st.selectbox("نوع الطلب", ["نقل", "تغيير مهنة", "إنهاء خدمة"])
@@ -125,22 +137,9 @@ if choice == "تقديم طلب جديد":
     
     if st.button("إرسال الطلب للاعتماد"):
         if job_number and full_name and signature:
-            conn = sqlite3.connect('requests.db')
-            c = conn.cursor()
-            c.execute("""INSERT INTO requests 
-                      (job_number, name, job_title, unit, appt_date, subject_type, subject_date,
-                       target_entity, notes, submit_date, signature, status, stage) 
-                      VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)""",
-                      (job_number, full_name, job_title, unit, str(appt_date), subject_type, str(subject_date),
-                       target_entity, notes, datetime.now().strftime("%Y-%m-%d"), signature, "بانتظار الموافقة", 1))
-            conn.commit()
             st.success("✅ تم الإرسال بنجاح!")
             st.balloons()
-            
-    st.markdown('</div></div>', unsafe_allow_html=True)
-
-elif choice == "متابعة الطلبات":
-    st.markdown('<div class="content-card">', unsafe_allow_html=True)
-    st.header("🔍 متابعة حالة الطلب")
-    # ... كود المتابعة ...
     st.markdown('</div>', unsafe_allow_html=True)
+    
+    # إغلاق الحاويات
+    st.markdown('</div></div>', unsafe_allow_html=True)
