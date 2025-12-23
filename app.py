@@ -10,7 +10,6 @@ st.markdown("""
     .main { direction: rtl !important; text-align: right !important; background-color: #f4f7f9; }
     .block-container { max-width: 1100px !important; padding-top: 1.5rem; }
     
-    /* تنسيق الهيدر */
     .company-header {
         display: flex; align-items: center; justify-content: flex-start;
         padding: 15px 25px; background: white; border-radius: 15px; margin-bottom: 25px;
@@ -32,9 +31,9 @@ st.markdown("""
         background-color: #5d5fef; color: white;
         display: flex; align-items: center; justify-content: center;
         font-weight: bold; z-index: 3; font-size: 18px;
+        box-shadow: 0 4px 10px rgba(93,95,239,0.3);
     }
 
-    /* بطاقة المحتوى */
     .content-box { background-color: white; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.04); overflow: hidden; border: 1px solid #eef0f2; }
     .step-header { background: linear-gradient(90deg, #5d5fef, #7a7cfc); color: white; padding: 12px 25px; font-size: 15px; font-weight: bold; }
     .form-body { padding: 20px 25px; }
@@ -53,11 +52,11 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. إدارة الحالة (Session State)
+# إدارة الحالة
 if 'page' not in st.session_state:
     st.session_state.page = 'form'
 
-# 3. الهيدر الرسمي
+# الهيدر
 st.markdown("""
     <div class="company-header">
         <div class="header-logo"><img src="https://cdn-icons-png.flaticon.com/512/281/281764.png"></div>
@@ -77,9 +76,7 @@ with st.sidebar:
 
 # --- صفحة النموذج ---
 if st.session_state.page == 'form':
-    # حاوية مخصصة لرسالة النجاح لتظهر في الأعلى/المنتصف بشكل بارز
-    success_placeholder = st.empty()
-
+    
     # الخطوة 1
     st.markdown('<div class="step-block"><div class="step-icon">1</div>', unsafe_allow_html=True)
     with st.container():
@@ -111,30 +108,32 @@ if st.session_state.page == 'form':
         with c9: st.file_uploader("توقيعك", type=['png', 'jpg'], key="sig_up", label_visibility="collapsed")
         with c10: 
             st.markdown("<div style='height:0px;'></div>", unsafe_allow_html=True)
-            if st.button("إرسال الطلب", use_container_width=True):
-                # عرض التحميل داخل النموذج
-                p_bar = st.progress(0)
-                for i in range(100):
-                    time.sleep(0.01)
-                    p_bar.progress(i + 1)
-                
-                # إظهار رسالة النجاح العريضة في مكان بارز
-                success_placeholder.success("🎉 تم إرسال طلبك بنجاح! جاري تحويلك لصفحة المتابعة...")
-                
-                # ثبات الرسالة لمدة ثانيتين (أبطأ لضمان الوضوح)
-                time.sleep(2)
-                
-                # التحويل التلقائي المؤكد
-                st.session_state.page = 'tracking'
-                st.rerun()
-
+            submit_btn = st.button("إرسال الطلب", use_container_width=True)
         st.markdown('</div></div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- صفحة التتبع بالجدول ---
+    # --- الخطوة الثالثة: رسالة النجاح (تظهر تحت الخط الزمني عند الضغط) ---
+    if submit_btn:
+        st.markdown('<div class="step-block"><div class="step-icon">✓</div>', unsafe_allow_html=True)
+        with st.container():
+            # شريط التحميل يظهر أولاً
+            p_bar = st.progress(0)
+            for i in range(100):
+                time.sleep(0.01)
+                p_bar.progress(i + 1)
+            
+            # ثم رسالة النجاح العريضة في الأسفل تماماً
+            st.success("🎉 تم إرسال طلبك بنجاح! يتم الآن توجيهك إلى صفحة المتابعة...")
+            
+            # الانتظار ثم التحويل
+            time.sleep(2)
+            st.session_state.page = 'tracking'
+            st.rerun()
+        st.markdown('</div>', unsafe_allow_html=True)
+
+# --- صفحة التتبع ---
 elif st.session_state.page == 'tracking':
     st.markdown("<h3 style='text-align:right;'>🔍 سجل الطلبات والمتابعة</h3>", unsafe_allow_html=True)
-    
     table_html = """
     <table class="styled-table">
         <thead>
@@ -142,13 +141,11 @@ elif st.session_state.page == 'tracking':
         </thead>
         <tbody>
             <tr><td>#1028</td><td>تعديل مهنة</td><td>2023-12-20</td><td>موجود 📎</td><td><span class="status-badge status-pending">قيد الاعتماد</span></td></tr>
-            <tr><td>#1025</td><td>إنهاء خدمة</td><td>2023-11-15</td><td>موجود 📎</td><td><span class="status-badge status-pending">تحت المراجعة</span></td></tr>
             <tr><td>#1024</td><td>نقل داخلي</td><td>2023-10-01</td><td>-</td><td><span class="status-badge status-done">مكتمل</span></td></tr>
         </tbody>
     </table>
     """
     st.markdown(table_html, unsafe_allow_html=True)
-    
     if st.button("العودة لتقديم طلب جديد"):
         st.session_state.page = 'form'
         st.rerun()
