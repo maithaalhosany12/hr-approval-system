@@ -2,65 +2,77 @@ import streamlit as st
 from datetime import datetime
 import time
 
-# 1. إعداد الصفحة (إخفاء القائمة الجانبية وتوسيع العرض)
+# 1. إعداد الصفحة
 st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. تنسيق CSS مكثف لتصغير كافة المساحات
+# 2. تنسيق CSS: تقليص حجم المربعات فقط مع الحفاظ على أبعاد الصفحة
 st.markdown("""
     <style>
-    /* تصغير مساحة الصفحة العامة */
-    .block-container { padding-top: 1rem !important; padding-bottom: 0rem !important; }
+    .main { background-color: #f4f7f9; }
     
-    /* تصغير الهيدر الخاص بالشركة */
+    /* تقليص مساحة مربعات التعبئة (الارتفاع فقط) */
+    .stTextInput>div>div>input, .stSelectbox>div>div>div, .stDateInput>div>div>input {
+        min-height: 32px !important;
+        height: 32px !important;
+        padding: 0px 10px !important;
+        font-size: 14px !important;
+    }
+
+    /* هيدر الشركة */
     .company-header {
         display: flex; align-items: center; justify-content: space-between;
-        padding: 8px 20px; background: white; border-radius: 10px; margin-bottom: 15px;
-        box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-right: 4px solid #5d5fef;
+        padding: 12px 25px; background: white; border-radius: 15px; margin-bottom: 25px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-right: 6px solid #5d5fef;
     }
 
-    /* الخط العمودي والدوائر (تصغير الحجم) */
-    .step-block { position: relative; padding-right: 45px; margin-bottom: 15px; }
+    /* تصميم الخط والدوائر (النمط القديم) */
+    .step-block { position: relative; padding-right: 60px; margin-bottom: 25px; }
     .step-block::before {
-        content: ""; position: absolute; right: 22px; top: 30px; bottom: -25px;
-        width: 2px; background-color: #5d5fef; z-index: 1; opacity: 0.2;
+        content: ""; position: absolute; right: 28px; top: 40px; bottom: -40px;
+        width: 3px; background-color: #5d5fef; z-index: 1; opacity: 0.3;
     }
     .step-block:last-child::before { display: none; }
+
     .step-icon {
-        position: absolute; right: 5px; top: 0;
-        width: 34px; height: 34px; border-radius: 50%;
+        position: absolute; right: 8px; top: 0;
+        width: 42px; height: 42px; border-radius: 50%;
         background-color: #5d5fef; color: white;
         display: flex; align-items: center; justify-content: center;
-        font-weight: bold; z-index: 3; font-size: 16px;
+        font-weight: bold; z-index: 3; font-size: 20px;
+        box-shadow: 0 4px 10px rgba(93,95,239,0.3);
     }
 
-    /* تصغير البطاقة وشريط العنوان */
-    .content-box { background-color: white; border-radius: 10px; box-shadow: 0 4px 12px rgba(0,0,0,0.03); overflow: hidden; border: 1px solid #eee; }
-    .step-header { background: #5d5fef; color: white; padding: 6px 20px; font-size: 15px; font-weight: bold; }
-    .form-body { padding: 12px 20px; }
+    /* بطاقة المحتوى والعنوان */
+    .content-box { background-color: white; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.04); overflow: hidden; border: 1px solid #eef0f2; }
+    .step-header { background: linear-gradient(90deg, #5d5fef, #7a7cfc); color: white; padding: 10px 25px; font-size: 17px; font-weight: bold; }
+    .form-body { padding: 20px 25px; }
 
-    /* تصغير الحقول والمسافات بينها */
-    .stTextInput>div>div>input, .stSelectbox>div>div>div { min-height: 32px !important; font-size: 14px !important; }
-    div[data-testid="stVerticalBlock"] { gap: 0.5rem !important; }
-    
-    /* زر الإرسال المدمج */
-    .stButton>button { height: 2.8em !important; font-size: 14px !important; margin-top: 10px; }
+    /* التايم لاين */
+    .timeline-wrapper {
+        display: flex; justify-content: space-around; background: white; 
+        padding: 20px; border-radius: 15px; margin-top: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+    .t-step { text-align: center; flex: 1; }
+    .t-dot { width: 25px; height: 25px; background: #ddd; border-radius: 50%; margin: 0 auto 8px; }
+    .t-step.active .t-dot { background: #5d5fef; box-shadow: 0 0 8px #5d5fef; }
+    .t-label { font-size: 13px; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
 if 'page' not in st.session_state:
     st.session_state.page = 'form'
 
-# 5. الهيدر المدمج
+# 5. الهيدر
 st.markdown(f"""
     <div class="company-header">
         <div style="display: flex; align-items: center;">
-            <img src="https://cdn-icons-png.flaticon.com/512/281/281764.png" width="30">
-            <div style="margin-right: 12px;">
-                <span style="font-weight: bold; font-size: 16px;">مؤسسة المسار</span>
-                <span style="font-size: 12px; color: #666; margin-right: 10px;">| شؤون الموظفين</span>
+            <img src="https://cdn-icons-png.flaticon.com/512/281/281764.png" width="35">
+            <div style="margin-right: 15px;">
+                <div style="font-weight: bold; font-size: 18px;">مؤسسة المسار المتكامل</div>
+                <div style="font-size: 12px; color: #666;">قسم الموارد البشرية - HR</div>
             </div>
         </div>
-        <div style="font-size: 12px; color: #5d5fef; font-weight: bold;">{datetime.now().strftime('%Y-%m-%d')}</div>
+        <div style="text-align: left; color: #5d5fef; font-weight: bold;">{datetime.now().strftime('%Y-%m-%d')}</div>
     </div>
     """, unsafe_allow_html=True)
 
@@ -68,58 +80,60 @@ with st.sidebar:
     choice = st.selectbox("", ["تقديم طلب جديد", "متابعة الطلبات"], label_visibility="collapsed")
     if choice == "متابعة الطلبات": st.session_state.page = 'tracking'
 
-# --- صفحة النموذج المدمجة ---
+# --- صفحة النموذج (الشكل المريح مع مربعات تعبئة صغيرة) ---
 if st.session_state.page == 'form':
     
     # الخطوة 1
     st.markdown('<div class="step-block"><div class="step-icon">1</div>', unsafe_allow_html=True)
     with st.container():
-        st.markdown('<div class="content-box"><div class="step-header">👤 بيانات مقدم الطلب</div><div class="form-body">', unsafe_allow_html=True)
-        c1, c2, c3, c4 = st.columns(4) # توزيع الحقول على 4 أعمدة لتقليل الارتفاع
+        st.markdown('<div class="content-box"><div class="step-header">👤 الخطوة الأولى: بيانات مقدم الطلب</div><div class="form-body">', unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
         job_num = c1.text_input("الرقم الوظيفي")
         name = c2.text_input("الاسم الكامل")
-        title = c3.text_input("المسمى")
-        dept = c4.text_input("القسم")
+        title = c1.text_input("المسمى الوظيفي")
+        dept = c2.text_input("الوحدة / القسم")
         st.markdown('</div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
     # الخطوة 2
     st.markdown('<div class="step-block"><div class="step-icon">2</div>', unsafe_allow_html=True)
     with st.container():
-        st.markdown('<div class="content-box"><div class="step-header">📝 تفاصيل الطلب والاعتماد</div><div class="form-body">', unsafe_allow_html=True)
-        c1, c2, c3 = st.columns([1, 1, 2])
-        req_type = c1.selectbox("نوع الطلب", ["نقل", "تغيير مهنة", "إنهاء خدمة"])
-        eff_date = c2.date_input("تاريخ السريان", value=datetime.now(), disabled=True)
-        sig_file = c3.file_uploader("ارفق صورة التوقيع", type=['png', 'jpg'], label_visibility="visible")
+        st.markdown('<div class="content-box"><div class="step-header">📝 الخطوة الثانية: تفاصيل موضوع الطلب والاعتماد</div><div class="form-body">', unsafe_allow_html=True)
+        c3, c4 = st.columns(2)
+        req_type = c3.selectbox("نوع الطلب", ["نقل", "تغيير مهنة", "إنهاء خدمة"])
+        eff_date = c4.date_input("تاريخ سريان الطلب (تلقائي)", value=datetime.now(), disabled=True)
         
-        notes = st.text_input("ملاحظات إضافية (اختياري)") # تحويل text_area إلى text_input لتوفير مساحة
+        # التوقيع كصورة
+        st.markdown("<br><b>✍️ التوقيع الرقمي (رفع صورة)</b>", unsafe_allow_html=True)
+        sig_file = st.file_uploader("", type=['png', 'jpg', 'jpeg'], label_visibility="collapsed")
+        
+        st.text_input("ملاحظات إضافية (اختياري)")
         
         if st.button("إرسال الطلب"):
             if job_num and name and sig_file:
-                st.toast("✅ تم الإرسال!", icon="🎉")
-                time.sleep(0.5)
+                st.toast("✅ تم إرسال طلبك بنجاح!", icon="🎉")
+                time.sleep(1)
                 st.session_state.page = 'tracking'
                 st.rerun()
             else:
-                st.error("⚠️ أكمل البيانات")
+                st.error("⚠️ يرجى إكمال البيانات ورفع صورة التوقيع")
         st.markdown('</div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- صفحة التتبع المدمجة ---
+# --- صفحة التتبع (Timeline) ---
 elif st.session_state.page == 'tracking':
-    st.markdown("<h5 style='margin-bottom:15px;'>🔍 تتبع الطلب</h5>", unsafe_allow_html=True)
+    st.markdown("<h4>🔍 حالة الطلبات المقدمة</h4>", unsafe_allow_html=True)
     
-    # Timeline مدمج
-    st.markdown("""
-        <div style="display: flex; justify-content: space-around; background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 8px rgba(0,0,0,0.05);">
-            <div style="text-align: center;"><div style="width:12px; height:12px; background:#5d5fef; border-radius:50%; margin: 0 auto 5px;"></div><div style="font-size:11px;">تقديم</div></div>
-            <div style="text-align: center;"><div style="width:12px; height:12px; background:#5d5fef; border-radius:50%; margin: 0 auto 5px;"></div><div style="font-size:11px;">HR</div></div>
-            <div style="text-align: center;"><div style="width:12px; height:12px; background:#ddd; border-radius:50%; margin: 0 auto 5px;"></div><div style="font-size:11px;">اعتماد</div></div>
-            <div style="text-align: center;"><div style="width:12px; height:12px; background:#ddd; border-radius:50%; margin: 0 auto 5px;"></div><div style="font-size:11px;">اكتمال</div></div>
+    st.markdown(f"""
+        <div class="timeline-wrapper">
+            <div class="t-step active"><div class="t-dot"></div><div class="t-label">تم التقديم</div></div>
+            <div class="t-step active"><div class="t-dot"></div><div class="t-label">مراجعة الموارد</div></div>
+            <div class="t-step"><div class="t-dot"></div><div class="t-label">اعتماد الإدارة</div></div>
+            <div class="t-step"><div class="t-dot"></div><div class="t-label">مكتمل</div></div>
         </div>
     """, unsafe_allow_html=True)
     
-    st.info("الطلب قيد المراجعة")
-    if st.button("عودة"):
+    st.info("طلبك حالياً في مرحلة التدقيق من قبل قسم الموارد البشرية.")
+    if st.button("العودة للرئيسية"):
         st.session_state.page = 'form'
         st.rerun()
