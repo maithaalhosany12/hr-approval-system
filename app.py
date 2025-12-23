@@ -2,136 +2,120 @@ import streamlit as st
 from datetime import datetime
 import time
 
-# 1. إعداد الصفحة (عرض واسع واتجاه يمين)
+# 1. إعداد الصفحة
 st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. تنسيق CSS ثابت (لا يتغير فيه الاتجاه)
+# 2. تنسيق CSS لتقليص عرض الحقول وضمان اتجاه اليمين
 st.markdown("""
     <style>
-    /* فرض اتجاه اليمين على كل شيء */
     .main { direction: rtl !important; text-align: right !important; background-color: #f8fafc; }
-    div[data-testid="stVerticalBlock"] { direction: rtl !important; }
+    div[data-testid="stVerticalBlock"] { direction: rtl !important; gap: 0.5rem !important; }
     
-    /* تقليص عرض المحتوى ليكون ملموماً ومرتباً في المنتصف */
-    .block-container { max-width: 850px !important; padding-top: 2rem; }
+    /* تحديد عرض النموذج ليكون ملموماً */
+    .block-container { max-width: 950px !important; padding-top: 1rem; }
 
-    /* الهيدر: الشعار والنص في المنتصف */
+    /* الهيدر */
     .header-container {
         display: flex; flex-direction: column; align-items: center; justify-content: center;
-        background: white; padding: 20px; border-radius: 15px; margin-bottom: 25px;
-        box-shadow: 0 4px 10px rgba(0,0,0,0.05); text-align: center;
+        background: white; padding: 10px; border-radius: 12px; margin-bottom: 15px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05); text-align: center;
     }
-    .header-container img { width: 50px; margin-bottom: 10px; }
-    .header-container h1 { margin: 0; font-size: 20px; color: #1e293b; }
-    .header-container p { margin: 0; font-size: 13px; color: #5d5fef; font-weight: bold; }
+    .header-container img { width: 40px; margin-bottom: 5px; }
+    .header-container h1 { margin: 0; font-size: 18px; color: #1e293b; }
 
-    /* بطاقة الخطوات (النمط القديم الفخم) */
+    /* بطاقة الخطوات */
     .step-card {
-        background: white; border-radius: 12px; overflow: hidden;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05); border: 1px solid #e2e8f0;
-        margin-bottom: 25px; direction: rtl;
+        background: white; border-radius: 10px; overflow: hidden;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.04); border: 1px solid #e2e8f0;
+        margin-bottom: 15px; direction: rtl;
     }
 
-    /* شريط العنوان مع الرقم على اليسار */
+    /* شريط العنوان */
     .step-bar {
         background: linear-gradient(90deg, #5d5fef, #7a7cfc);
-        color: white; padding: 10px 20px; display: flex;
+        color: white; padding: 8px 20px; display: flex;
         justify-content: space-between; align-items: center;
     }
     .step-num {
-        width: 28px; height: 28px; background: rgba(255,255,255,0.2);
+        width: 25px; height: 25px; background: rgba(255,255,255,0.2);
         border: 1px solid white; border-radius: 50%;
-        display: flex; align-items: center; justify-content: center; font-size: 14px;
+        display: flex; align-items: center; justify-content: center; font-size: 13px;
     }
 
-    /* تقصير عرض مربعات التعبئة وتنسيقها */
+    /* تقصير عرض وطول المربعات */
     .stTextInput>div>div>input, .stSelectbox>div>div>div, .stDateInput>div>div>input {
-        min-height: 35px !important; height: 35px !important;
-        text-align: right !important; direction: rtl !important;
-        font-size: 14px !important; border-radius: 8px !important;
+        min-height: 30px !important; height: 30px !important;
+        text-align: right !important; font-size: 13px !important;
+        border-radius: 6px !important;
     }
 
-    /* محاذاة العناوين (Labels) لليمين */
-    label { text-align: right !important; width: 100%; display: block !important; font-weight: 600 !important; color: #475569 !important; }
-    
-    .body-padding { padding: 20px; }
+    label { font-size: 12px !important; font-weight: 600 !important; margin-bottom: 2px !important; }
+    .body-padding { padding: 15px; }
     </style>
     """, unsafe_allow_html=True)
 
-# إدارة الصفحات
 if 'page' not in st.session_state:
     st.session_state.page = 'form'
 
-# 3. الهيدر (الشعار في الوسط والكتابة تحته)
+# 3. الهيدر
 st.markdown("""
     <div class="header-container">
         <img src="https://cdn-icons-png.flaticon.com/512/281/281764.png">
         <h1>مؤسسة المسار المتكامل</h1>
-        <p>قسم شؤون الموظفين - نموذج الطلبات الإلكتروني</p>
+        <p style="margin:0; font-size:11px; color:#5d5fef;">قسم شؤون الموظفين</p>
     </div>
     """, unsafe_allow_html=True)
 
-with st.sidebar:
-    choice = st.selectbox("", ["تقديم طلب جديد", "متابعة الطلبات"], label_visibility="collapsed")
-    if choice == "متابعة الطلبات": st.session_state.page = 'tracking'
-
-# --- الصفحة الأولى: النموذج ---
+# --- الصفحة الأولى: النموذج بحقول متجاورة ---
 if st.session_state.page == 'form':
     
-    # الخطوة 1
+    # الخطوة 1: بيانات الموظف (4 حقول في سطر واحد)
     st.markdown('<div class="step-card">', unsafe_allow_html=True)
-    st.markdown('<div class="step-bar"><span>👤 الخطوة الأولى: بيانات مقدم الطلب</span><div class="step-num">1</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="step-bar"><span>👤 بيانات مقدم الطلب</span><div class="step-num">1</div></div>', unsafe_allow_html=True)
     with st.container():
         st.markdown('<div class="body-padding">', unsafe_allow_html=True)
-        c1, c2 = st.columns(2)
+        # تقسيم السطر إلى 4 أعمدة لجعل الحقول قصيرة جداً وبجانب بعضها
+        c1, c2, c3, c4 = st.columns(4)
         with c1: job_num = st.text_input("الرقم الوظيفي")
         with c2: name = st.text_input("الاسم الكامل")
-        
-        c3, c4 = st.columns(2)
-        with c3: title = st.text_input("المسمى الوظيفي")
-        with c4: dept = st.text_input("الوحدة / القسم")
+        with c3: title = st.text_input("المسمى")
+        with c4: dept = st.text_input("القسم")
         st.markdown('</div></div></div>', unsafe_allow_html=True)
 
-    # الخطوة 2
+    # الخطوة 2: تفاصيل الطلب (حقول مدمجة)
     st.markdown('<div class="step-card">', unsafe_allow_html=True)
-    st.markdown('<div class="step-bar"><span>📝 الخطوة الثانية: تفاصيل الطلب والاعتماد</span><div class="step-num">2</div></div>', unsafe_allow_html=True)
+    st.markdown('<div class="step-bar"><span>📝 تفاصيل الطلب</span><div class="step-num">2</div></div>', unsafe_allow_html=True)
     with st.container():
         st.markdown('<div class="body-padding">', unsafe_allow_html=True)
-        c5, c6 = st.columns(2)
-        with c5: req_type = st.selectbox("نوع الطلب", ["نقل", "تغيير مهنة", "إنهاء خدمة"])
-        with c6: eff_date = st.date_input("تاريخ السريان (تلقائي)", value=datetime.now(), disabled=True)
         
-        st.markdown("<p style='margin-bottom:5px; font-weight:bold; font-size:14px;'>✍️ ارفع صورة التوقيع الرقمي</p>", unsafe_allow_html=True)
-        sig_file = st.file_uploader("", type=['png', 'jpg', 'jpeg'], label_visibility="collapsed")
+        # وضع نوع الطلب والتاريخ والملاحظات في سطر واحد مقسم
+        c5, c6, c7 = st.columns([1, 1, 2])
+        with c5: req_type = st.selectbox("نوع الطلب", ["نقل", "تعديل مهنة", "استقالة"])
+        with c6: eff_date = st.date_input("تاريخ السريان", value=datetime.now(), disabled=True)
+        with c7: notes = st.text_input("ملاحظات إضافية")
         
-        notes = st.text_input("ملاحظات إضافية (اختياري)")
+        # سطر التوقيع والزر
+        st.markdown("<hr style='margin:10px 0; opacity:0.1;'>", unsafe_allow_html=True)
+        c8, c9 = st.columns([3, 1])
+        with c8: sig_file = st.file_uploader("ارفع صورة التوقيع الرقمي", type=['png', 'jpg'], label_visibility="collapsed")
+        with c9: 
+            st.markdown("<div style='height:0px;'></div>", unsafe_allow_html=True)
+            submit = st.button("إرسال الطلب", use_container_width=True)
         
-        st.markdown("<br>", unsafe_allow_html=True)
-        # زر الإرسال مقلص العرض
-        btn_col, _ = st.columns([1, 3])
-        if btn_col.button("إرسال الطلب الآن"):
+        if submit:
             if job_num and name and sig_file:
-                st.toast("✅ تم إرسال طلبك بنجاح!", icon="🎉")
-                time.sleep(1)
+                st.toast("✅ تم الإرسال بنجاح")
+                time.sleep(0.5)
                 st.session_state.page = 'tracking'
                 st.rerun()
             else:
-                st.error("⚠️ يرجى إكمال البيانات ورفع صورة التوقيع")
+                st.error("أكمل البيانات")
         st.markdown('</div></div></div>', unsafe_allow_html=True)
 
-# --- الصفحة الثانية: التتبع ---
+# --- صفحة التتبع ---
 elif st.session_state.page == 'tracking':
-    st.markdown("<h4 style='text-align:right;'>🔍 حالة الطلبات المقدمة</h4>", unsafe_allow_html=True)
-    
-    st.markdown("""
-        <div style="display: flex; justify-content: space-around; background: white; padding: 25px; border-radius: 15px; box-shadow: 0 4px 12px rgba(0,0,0,0.05); direction: rtl; margin-top: 20px;">
-            <div style="text-align: center;"><div style="width:25px; height:25px; background:#5d5fef; border-radius:50%; margin: 0 auto 10px; box-shadow: 0 0 10px #5d5fef;"></div><div style="font-size:13px; font-weight:bold;">تم التقديم</div></div>
-            <div style="text-align: center;"><div style="width:25px; height:25px; background:#5d5fef; border-radius:50%; margin: 0 auto 10px; box-shadow: 0 0 10px #5d5fef;"></div><div style="font-size:13px; font-weight:bold;">مراجعة HR</div></div>
-            <div style="text-align: center;"><div style="width:25px; height:25px; background:#ddd; border-radius:50%; margin: 0 auto 10px;"></div><div style="font-size:13px; font-weight:bold;">الاعتماد</div></div>
-        </div>
-    """, unsafe_allow_html=True)
-    
-    st.info("الطلب قيد المراجعة الفنية حالياً.")
-    if st.button("العودة للرئيسية"):
+    st.markdown("<h5 style='text-align:right;'>🔍 حالة الطلب</h5>", unsafe_allow_html=True)
+    st.info("طلبك قيد المعالجة الآن.")
+    if st.button("عودة"):
         st.session_state.page = 'form'
         st.rerun()
