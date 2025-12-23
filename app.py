@@ -2,15 +2,12 @@ import streamlit as st
 import sqlite3
 from datetime import datetime
 
-# إعداد الصفحة لتكون نظيفة وبدون شريط جانبي
-st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide", initial_sidebar_state="collapsed")
+# إعداد الصفحة
+st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide")
 
-# تنسيق CSS الاحترافي للنموذج والخط المتصل
+# تنسيق CSS الاحترافي
 st.markdown("""
     <style>
-    /* إخفاء القائمة الجانبية تماماً */
-    [data-testid="stSidebar"] { display: none; }
-    
     .main { background-color: #f4f7f9; }
     
     /* حاوية الخطوة */
@@ -34,7 +31,7 @@ st.markdown("""
     }
     .step-block:last-child::before { display: none; }
 
-    /* الدائرة الرقمية */
+    /* الدائرة الرقمية بجانب الشكل */
     .step-icon {
         position: absolute;
         right: 8px;
@@ -73,7 +70,15 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# تهيئة قاعدة البيانات
+# --- الجزء الذي طلبته: القائمة المنسدلة في الشريط الجانبي ---
+with st.sidebar:
+    st.markdown("### 📋 القائمة الرئيسية")
+    # استخدام selectbox لعمل القائمة المنسدلة
+    choice = st.selectbox(
+        "اختر الإجراء المطلوب:", 
+        ["تقديم طلب جديد", "متابعة الطلبات", "الاعتمادات الإدارية"]
+    )
+
 def init_db():
     conn = sqlite3.connect('requests.db')
     c = conn.cursor()
@@ -87,57 +92,65 @@ def init_db():
 
 init_db()
 
-# محتوى الصفحة الرئيسي مباشرة
-st.markdown("<h1 style='text-align: center; color: #2d3436;'>📋 نموذج تقديم طلب إداري</h1><br>", unsafe_allow_html=True)
+# تنفيذ المحتوى بناءً على اختيار القائمة المنسدلة
+if choice == "تقديم طلب جديد":
+    st.markdown("<h1 style='text-align: center; color: #2d3436;'>نموذج تقديم طلب إداري</h1><br>", unsafe_allow_html=True)
 
-# --- الخطوة الأولى ---
-st.markdown('<div class="step-block"><div class="step-icon">1</div>', unsafe_allow_html=True)
-with st.container():
-    st.markdown('''
-        <div class="content-box">
-            <div class="step-header">👤 الخطوة الأولى: بيانات مقدم الطلب</div>
-            <div class="form-body">
-    ''', unsafe_allow_html=True)
-    
-    c1, c2 = st.columns(2)
-    with c1:
-        job_number = st.text_input("الرقم الوظيفي")
-        full_name = st.text_input("الاسم الكامل")
-    with c2:
-        job_title = st.text_input("المسمى الوظيفي")
-        unit = st.text_input("الوحدة / القسم")
-    st.date_input("تاريخ التعيين", key="d1")
-    
-    st.markdown('</div></div>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
+    # --- الخطوة الأولى ---
+    st.markdown('<div class="step-block"><div class="step-icon">1</div>', unsafe_allow_html=True)
+    with st.container():
+        st.markdown('''
+            <div class="content-box">
+                <div class="step-header">👤 الخطوة الأولى: بيانات مقدم الطلب</div>
+                <div class="form-body">
+        ''', unsafe_allow_html=True)
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            job_number = st.text_input("الرقم الوظيفي")
+            full_name = st.text_input("الاسم الكامل")
+        with c2:
+            job_title = st.text_input("المسمى الوظيفي")
+            unit = st.text_input("الوحدة / القسم")
+        st.date_input("تاريخ التعيين", key="d1")
+        
+        st.markdown('</div></div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# --- الخطوة الثانية ---
-st.markdown('<div class="step-block"><div class="step-icon">2</div>', unsafe_allow_html=True)
-with st.container():
-    st.markdown('''
-        <div class="content-box">
-            <div class="step-header">📝 الخطوة الثانية: تفاصيل موضوع الطلب والاعتماد</div>
-            <div class="form-body">
-    ''', unsafe_allow_html=True)
-    
-    c3, c4 = st.columns(2)
-    with c3:
-        subject_type = st.selectbox("نوع الطلب", ["نقل", "تغيير مهنة", "إنهاء خدمة"])
-    with c4:
-        subject_date = st.date_input("تاريخ سريان الطلب", key="d2")
-    
-    st.text_area("ملاحظات إضافية")
-    st.markdown("<hr style='opacity: 0.1;'>", unsafe_allow_html=True)
-    st.markdown("<b>✍️ التوقيع الرقمي:</b>", unsafe_allow_html=True)
-    signature = st.text_input("اكتب الاسم الثلاثي للإقرار بصحة البيانات")
-    
-    if st.button("إرسال الطلب الآن"):
-        if job_number and full_name and signature:
-            # هنا يمكنك إضافة كود الحفظ في قاعدة البيانات
-            st.success("✅ تم إرسال الطلب بنجاح!")
-            st.balloons()
-        else:
-            st.error("⚠️ يرجى التأكد من تعبئة البيانات الأساسية")
+    # --- الخطوة الثانية ---
+    st.markdown('<div class="step-block"><div class="step-icon">2</div>', unsafe_allow_html=True)
+    with st.container():
+        st.markdown('''
+            <div class="content-box">
+                <div class="step-header">📝 الخطوة الثانية: تفاصيل موضوع الطلب والاعتماد</div>
+                <div class="form-body">
+        ''', unsafe_allow_html=True)
+        
+        c3, c4 = st.columns(2)
+        with c3:
+            subject_type = st.selectbox("نوع الطلب", ["نقل", "تغيير مهنة", "إنهاء خدمة"])
+        with c4:
+            subject_date = st.date_input("تاريخ سريان الطلب", key="d2")
+        
+        st.text_area("ملاحظات إضافية")
+        st.markdown("<hr style='opacity: 0.1;'>", unsafe_allow_html=True)
+        st.markdown("<b>✍️ التوقيع الرقمي:</b>", unsafe_allow_html=True)
+        signature = st.text_input("اكتب الاسم الثلاثي للإقرار")
+        
+        if st.button("إرسال الطلب الآن"):
+            if job_number and full_name and signature:
+                st.success("✅ تم إرسال الطلب بنجاح!")
+                st.balloons()
+            else:
+                st.error("⚠️ يرجى تعبئة البيانات الأساسية")
             
-    st.markdown('</div></div>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
+        st.markdown('</div></div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+elif choice == "متابعة الطلبات":
+    st.markdown("## 🔍 صفحة متابعة الطلبات")
+    st.write("هنا تظهر قائمة بطلباتك السابقة وحالتها...")
+
+elif choice == "الاعتمادات الإدارية":
+    st.markdown("## ⚙️ قسم الاعتمادات")
+    st.write("هذا القسم خاص بالمسؤولين فقط لاعتماد الطلبات...")
