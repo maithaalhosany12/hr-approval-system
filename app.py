@@ -69,8 +69,8 @@ st.markdown(f"""
                 <img src="https://cdn-icons-png.flaticon.com/512/281/281764.png" width="24" style="filter: brightness(0) invert(1);">
             </div>
             <div>
-                <div style="font-weight: bold; font-size: 17px; color: #2d3436;">مؤسسة المسار المتكامل</div>
-                <div style="font-size: 12px; color: #666;">قسم الموارد البشرية - نموذج إلكتروني</div>
+                <div style="font-weight: bold; font-size: 17px; color: #2d3436;"></div>
+                <div style="font-size: 12px; color: #666;">قسم الموارد البشرية</div>
             </div>
         </div>
     </div>
@@ -89,7 +89,7 @@ if st.session_state.page == 'form':
         st.markdown('''
             <div class="content-box">
                 <div class="step-header">
-                    <span>👤 الخطوة الأولى: بيانات مقدم الطلب</span>
+                    <span>  بيانات مقدم الطلب</span>
                     <div class="step-number-circle">1</div>
                 </div>
                 <div class="form-body">
@@ -110,7 +110,7 @@ if st.session_state.page == 'form':
         st.markdown('''
             <div class="content-box">
                 <div class="step-header">
-                    <span>📝 الخطوة الثانية: تفاصيل موضوع الطلب</span>
+                    <span> تفاصيل موضوع الطلب</span>
                     <div class="step-number-circle">2</div>
                 </div>
                 <div class="form-body">
@@ -146,3 +146,4 @@ elif st.session_state.page == 'tracking':
     if st.button("العودة"):
         st.session_state.page = 'form'
         st.rerun()
+
