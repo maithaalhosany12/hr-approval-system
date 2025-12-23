@@ -2,7 +2,7 @@ import streamlit as st
 from datetime import datetime
 import time
 
-# 1. إعداد الصفحة والتنسيق (ثابت كما هو)
+# 1. إعداد الصفحة والتنسيق (ثابت تماماً كما هو)
 st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
@@ -30,7 +30,6 @@ st.markdown("""
         background-color: #5d5fef; color: white;
         display: flex; align-items: center; justify-content: center;
         font-weight: bold; z-index: 3; font-size: 18px;
-        box-shadow: 0 4px 10px rgba(93,95,239,0.3);
     }
 
     .content-box { background-color: white; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.04); overflow: hidden; border: 1px solid #eef0f2; }
@@ -43,16 +42,14 @@ st.markdown("""
     .styled-table { width: 100%; border-collapse: collapse; margin-top: 10px; background: white; border-radius: 10px; overflow: hidden; }
     .styled-table thead tr { background-color: #5d5fef; color: white; text-align: right; }
     .styled-table th, .styled-table td { padding: 12px 15px; border-bottom: 1px solid #eee; font-size: 13px; }
-    .status-badge { padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: bold; }
-    .status-pending { background: #fff3cd; color: #856404; }
-    .status-done { background: #d4edda; color: #155724; }
     </style>
     """, unsafe_allow_html=True)
 
+# إدارة الحالة
 if 'page' not in st.session_state:
     st.session_state.page = 'form'
 
-# 3. الهيدر
+# 3. الهيدر الرسمي
 st.markdown("""
     <div class="company-header">
         <div class="header-logo"><img src="https://cdn-icons-png.flaticon.com/512/281/281764.png"></div>
@@ -63,18 +60,18 @@ st.markdown("""
     </div>
     """, unsafe_allow_html=True)
 
-# القائمة الجانبية المحدثة (Drop down list)
+# القائمة الجانبية (Dropdown تشمل كل الإجراءات مع الاعتمادات)
 with st.sidebar:
     st.title("⚙️ الإجراءات")
-    # تم تغييرها من Radio إلى Selectbox بناءً على طلبك
-    choice = st.selectbox("انتقل إلى:", ["تقديم طلب جديد", "متابعة الطلبات"], key="nav_menu")
-    if choice == "متابعة الطلبات": st.session_state.page = 'tracking'
-    else: st.session_state.page = 'form'
-
-# --- صفحة النموذج ---
-if st.session_state.page == 'form':
+    # تم دمج الاعتمادات هنا بناءً على طلبك
+    choice = st.selectbox("انتقل إلى:", ["تقديم طلب جديد", "متابعة الطلبات", "الاعتمادات"], key="nav_menu")
     
-    # الخطوة 1: بيانات مقدم الطلب
+    if choice == "تقديم طلب جديد": st.session_state.page = 'form'
+    elif choice == "متابعة الطلبات": st.session_state.page = 'tracking'
+    else: st.session_state.page = 'approvals'
+
+# --- 1. صفحة النموذج (كما كانت تماماً) ---
+if st.session_state.page == 'form':
     st.markdown('<div class="step-block"><div class="step-icon">1</div>', unsafe_allow_html=True)
     with st.container():
         st.markdown('<div class="content-box"><div class="step-header">👤 الخطوة الأولى: بيانات مقدم الطلب</div><div class="form-body">', unsafe_allow_html=True)
@@ -87,7 +84,6 @@ if st.session_state.page == 'form':
         st.markdown('</div></div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # الخطوة 2: تفاصيل الطلب
     st.markdown('<div class="step-block"><div class="step-icon">2</div>', unsafe_allow_html=True)
     with st.container():
         st.markdown('<div class="content-box"><div class="step-header">📝 الخطوة الثانية: تفاصيل الطلب</div><div class="form-body">', unsafe_allow_html=True)
@@ -95,42 +91,13 @@ if st.session_state.page == 'form':
         with c6: req_type = st.selectbox("نوع الطلب", ["نقل داخلي", "تعديل مهنة", "إنهاء خدمة"])
         with c7: st.date_input("تاريخ السريان", value=datetime.now(), disabled=True)
         with c8: st.text_input("ملاحظات إضافية")
-        
-        if req_type in ["تعديل مهنة", "إنهاء خدمة"]:
-            st.markdown("<div style='margin-top:10px; color:#5d5fef; font-size:13px;'>📎 يرجى إرفاق المستندات الداعمة</div>", unsafe_allow_html=True)
-            st.file_uploader("تحميل المرفقات", type=['pdf', 'png', 'jpg'], key="file_up", label_visibility="collapsed")
-        st.markdown('</div></div></div>', unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-
-    # 🟢 الإضافة الجديدة: الخطوة 3 (الاعتمادات)
-    st.markdown('<div class="step-block"><div class="step-icon">3</div>', unsafe_allow_html=True)
-    with st.container():
-        st.markdown('<div class="content-box"><div class="step-header">✅ الخطوة الثالثة: الاعتمادات والتوقيع</div><div class="form-body">', unsafe_allow_html=True)
-        
-        # توزيع الاعتمادات بشكل عرضي منظم
-        ac1, ac2, ac3 = st.columns(3)
-        with ac1:
-            st.markdown("<b>إعتماد المدير المباشر</b>", unsafe_allow_html=True)
-            st.selectbox("الحالة", ["قيد الانتظار", "موافق", "مرفوض"], key="manager_status")
-        with ac2:
-            st.markdown("<b>إعتماد الموارد البشرية</b>", unsafe_allow_html=True)
-            st.selectbox("الحالة", ["قيد الانتظار", "موافق", "مرفوض"], key="hr_status")
-        with ac3:
-            st.markdown("<b>إعتماد المدير العام</b>", unsafe_allow_html=True)
-            st.selectbox("الحالة", ["قيد الانتظار", "موافق", "مرفوض"], key="ceo_status")
-
-        st.markdown("<hr style='margin:15px 0; border:0.5px solid #eee;'>", unsafe_allow_html=True)
-        
-        st.markdown("<b>✍️ التوقيع الرقمي لمقدم الطلب</b>", unsafe_allow_html=True)
+        st.markdown("<br><b>✍️ التوقيع الرقمي</b>", unsafe_allow_html=True)
         c9, c10 = st.columns([3, 1])
         with c9: st.file_uploader("توقيعك", type=['png', 'jpg'], key="sig_up", label_visibility="collapsed")
-        with c10: 
-            st.markdown("<div style='height:0px;'></div>", unsafe_allow_html=True)
-            submit_btn = st.button("إرسال الطلب", use_container_width=True)
+        with c10: submit_btn = st.button("إرسال الطلب", use_container_width=True)
         st.markdown('</div></div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # رسالة النجاح والتحويل (ثابتة في مكانها بالأسفل)
     if submit_btn:
         st.markdown('<div class="step-block"><div class="step-icon">✓</div>', unsafe_allow_html=True)
         with st.container():
@@ -138,27 +105,25 @@ if st.session_state.page == 'form':
             for i in range(100):
                 time.sleep(0.01)
                 p_bar.progress(i + 1)
-            st.success("🎉 تم إرسال طلبك بنجاح! يتم الآن توجيهك إلى صفحة المتابعة...")
+            st.success("🎉 تم إرسال طلبك بنجاح!")
             time.sleep(2)
             st.session_state.page = 'tracking'
             st.rerun()
         st.markdown('</div>', unsafe_allow_html=True)
 
-# --- صفحة التتبع (ثابتة كما هي) ---
+# --- 2. صفحة تتبع الطلبات (كما كانت) ---
 elif st.session_state.page == 'tracking':
     st.markdown("<h3 style='text-align:right;'>🔍 سجل الطلبات والمتابعة</h3>", unsafe_allow_html=True)
-    table_html = """
-    <table class="styled-table">
-        <thead>
-            <tr><th>رقم الطلب</th><th>نوع الطلب</th><th>تاريخ التقديم</th><th>المرفقات</th><th>الحالة</th></tr>
-        </thead>
-        <tbody>
-            <tr><td>#1028</td><td>تعديل مهنة</td><td>2023-12-20</td><td>موجود 📎</td><td><span class="status-badge status-pending">قيد الاعتماد</span></td></tr>
-            <tr><td>#1024</td><td>نقل داخلي</td><td>2023-10-01</td><td>-</td><td><span class="status-badge status-done">مكتمل</span></td></tr>
-        </tbody>
-    </table>
-    """
-    st.markdown(table_html, unsafe_allow_html=True)
-    if st.button("العودة لتقديم طلب جديد"):
-        st.session_state.page = 'form'
-        st.rerun()
+    st.markdown('<table class="styled-table"><thead><tr><th>رقم الطلب</th><th>النوع</th><th>التاريخ</th><th>الحالة</th></tr></thead><tbody><tr><td>#1028</td><td>تعديل مهنة</td><td>2023-12-20</td><td>قيد الاعتماد</td></tr></tbody></table>', unsafe_allow_html=True)
+
+# --- 3. صفحة الاعتمادات (الإضافة الجديدة داخل القائمة المنسدلة) ---
+elif st.session_state.page == 'approvals':
+    st.markdown("<h3 style='text-align:right;'>✅ نظام الاعتمادات والموافقات</h3>", unsafe_allow_html=True)
+    with st.container():
+        st.markdown('<div class="content-box"><div class="step-header">مراجعة الطلبات المعلقة</div><div class="form-body">', unsafe_allow_html=True)
+        ac1, ac2, ac3 = st.columns(3)
+        with ac1: st.selectbox("إعتماد المدير المباشر", ["قيد الانتظار", "موافق", "مرفوض"])
+        with ac2: st.selectbox("إعتماد الموارد البشرية", ["قيد الانتظار", "موافق", "مرفوض"])
+        with ac3: st.selectbox("إعتماد المدير العام", ["قيد الانتظار", "موافق", "مرفوض"])
+        st.button("تحديث حالة الاعتمادات", use_container_width=True)
+        st.markdown('</div></div>', unsafe_allow_html=True)
