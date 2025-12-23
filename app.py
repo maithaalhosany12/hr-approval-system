@@ -3,14 +3,15 @@ import sqlite3
 from datetime import datetime
 import pandas as pd
 
-# إعداد الصفحة وتنسيق CSS
+# إعداد الصفحة وتنسيق الواجهة
 st.set_page_config(page_title="نظام شؤون الموظفين", layout="centered")
 
+# تنسيق CSS مخصص للأرقام والبطاقات لضمان مظهر الـ Scrolling المرتب
 st.markdown("""
     <style>
     .main { background-color: #f8f9fa; }
     
-    /* تنسيق الدائرة الرقمية بجانب العنوان */
+    /* تنسيق الدائرة الرقمية لتكون ملاصقة للعنوان */
     .step-number {
         display: inline-block;
         width: 35px; height: 35px; border-radius: 50%;
@@ -20,7 +21,7 @@ st.markdown("""
         box-shadow: 0 2px 5px rgba(93, 95, 239, 0.3);
     }
     
-    /* تنسيق البطاقة الرئيسية */
+    /* تنسيق بطاقات الأقسام (Scrolling Cards) */
     .main-card {
         background-color: white; padding: 35px; border-radius: 15px;
         box-shadow: 0 5px 15px rgba(0,0,0,0.05); margin-bottom: 30px;
@@ -41,18 +42,19 @@ st.markdown("""
     }
     .stButton>button:hover { background-color: #4a4cd9; border: none; }
     
-    /* تحسين شكل التنبيهات */
-    .stAlert { border-radius: 10px; }
+    hr { border: 0.5px solid #f0f2f6; margin: 25px 0; }
     </style>
     """, unsafe_allow_html=True)
 
+# دالة ذكية لتهيئة قاعدة البيانات وحل مشاكل الأعمدة المفقودة تلقائياً
 def init_db():
     conn = sqlite3.connect('requests.db')
     c = conn.cursor()
     try:
-        # فحص وجود العمود الجديد للتأكد من توافق قاعدة البيانات
+        # فحص وجود الأعمدة الحديثة لضمان عدم تعطل النظام
         c.execute("SELECT subject_date FROM requests LIMIT 1")
     except sqlite3.OperationalError:
+        # في حال وجود تعارض مع النسخ القديمة، يتم إعادة بناء الجدول
         c.execute("DROP TABLE IF EXISTS requests")
     
     c.execute('''CREATE TABLE IF NOT EXISTS requests
@@ -65,15 +67,15 @@ def init_db():
 
 init_db()
 
-# القائمة الجانبية
-menu = ["تقديم طلب جديد", "متابعة الطلبات", "الاعتمادات الإدارية"]
-choice = st.sidebar.radio("القائمة الرئيسية", menu)
+# القائمة الجانبية (Sidebar) للتنقل بين الأقسام
+st.sidebar.markdown("### ⚙️ التنقل في النظام")
+choice = st.sidebar.radio("", ["تقديم طلب جديد", "متابعة الطلبات", "الاعتمادات الإدارية"])
 
 if choice == "تقديم طلب جديد":
     st.markdown("<h1 style='text-align: center; color: #2d3436;'>📝 نموذج تقديم طلب إداري</h1>", unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
-    # --- الخطوة الأولى: بيانات مقدم الطلب ---
+    # --- الخطوة الأولى: بيانات مقدم الطلب (Scrolling Card 1) ---
     st.markdown(f'''
         <div class="main-card">
             <div class="section-title">
@@ -91,11 +93,11 @@ if choice == "تقديم طلب جديد":
     appt_date = st.date_input("تاريخ التعيين", key="appt")
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- الخطوة الثانية: تفاصيل الطلب + التوقيع (تم الدمج هنا) ---
+    # --- الخطوة الثانية: تفاصيل الطلب + الاعتماد (Scrolling Card 2) ---
     st.markdown(f'''
         <div class="main-card">
             <div class="section-title">
-                <span class="step-number">2</span> تفاصيل الطلب والاعتماد
+                <span class="step-number">2</span> تفاصيل موضوع الطلب والاعتماد
             </div>
     ''', unsafe_allow_html=True)
     
@@ -111,15 +113,16 @@ if choice == "تقديم طلب جديد":
         target_entity = ""
         
     if subject_type in ["تغيير مهنة", "إنهاء خدمة"]:
-        st.info(f"💡 يرجى إرفاق المستندات المطلوبة لحالة {subject_type}")
-        st.file_uploader("رفع المرفق الرسمي")
+        st.warning(f"💡 يرجى إرفاق المستندات الرسمية الداعمة لحالة: {subject_type}")
+        st.file_uploader("تحميل المرفق")
         
-    notes = st.text_area("ملاحظات الموظف")
+    notes = st.text_area("ملاحظات إضافية")
     
-    st.markdown("<hr style='border: 0.5px solid #eee;'>", unsafe_allow_html=True)
+    st.markdown("<hr>", unsafe_allow_html=True)
     st.markdown("<b>✍️ الإقرار والتوقيع الرقمي:</b>", unsafe_allow_html=True)
-    signature = st.text_input("اكتب اسمك الثلاثي للإقرار بصحة البيانات")
+    signature = st.text_input("اكتب اسمك الثلاثي كإقرار بصحة البيانات")
     
+    # زر الإرسال في نهاية التمرير
     if st.button("إرسال الطلب للاعتماد النهائي"):
         if job_number and full_name and signature:
             conn = sqlite3.connect('requests.db')
@@ -131,22 +134,23 @@ if choice == "تقديم طلب جديد":
                       (job_number, full_name, job_title, unit, str(appt_date), subject_type, str(subject_date),
                        target_entity, notes, datetime.now().strftime("%Y-%m-%d"), signature, "بانتظار موافقة المسؤول", 1))
             conn.commit()
-            st.success("✅ تم استلام طلبك بنجاح وجاري مراجعته.")
+            st.success("✅ تم إرسال طلبك بنجاح. يمكنك متابعة الحالة برقم المعاملة.")
             st.balloons()
         else:
-            st.error("⚠️ يرجى تعبئة كافة الحقول المطلوبة والتوقيع قبل الإرسال.")
+            st.error("⚠️ يرجى التأكد من تعبئة كافة البيانات الأساسية والتوقيع.")
     st.markdown('</div>', unsafe_allow_html=True)
 
 elif choice == "متابعة الطلبات":
     st.markdown('<div class="main-card">', unsafe_allow_html=True)
     st.header("🔍 استعلام عن حالة المعاملة")
-    search_id = st.number_input("أدخل رقم المعاملة", step=1, value=0)
+    search_id = st.number_input("رقم المعاملة", step=1, value=0)
     if search_id > 0:
         conn = sqlite3.connect('requests.db')
         df = pd.read_sql(f"SELECT * FROM requests WHERE id = {search_id}", conn)
         if not df.empty:
-            st.info(f"حالة الطلب الحالية: {df['status'].values[0]}")
+            st.markdown(f"### الحالة الحالية: `{df['status'].values[0]}`")
             st.progress(int(df['stage'].values[0]) / 3)
+            st.write(f"تاريخ التقديم: {df['submit_date'].values[0]}")
         else:
             st.error("رقم المعاملة غير موجود.")
     st.markdown('</div>', unsafe_allow_html=True)
