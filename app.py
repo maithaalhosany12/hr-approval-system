@@ -3,164 +3,143 @@ import sqlite3
 from datetime import datetime
 import time
 
-# 1. إعداد الصفحة وتصغير التصميم (Compact Design)
-st.set_page_config(page_title="نظام الطلبات الإدارية", layout="wide", initial_sidebar_state="collapsed")
+# 1. إعداد الصفحة
+st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide", initial_sidebar_state="collapsed")
 
-# تنسيق CSS مخصص لتلبية طلباتك (إلغاء السكرول، تصغير الحقول، التايم لاين)
+# 2. تنسيق CSS (الشكل القديم: الدوائر والخط العمودي + العناوين داخل الأشكال)
 st.markdown("""
     <style>
-    /* تصغير الحقول والمسافات */
-    .stTextInput>div>div>input, .stSelectbox>div>div>div { padding: 5px 10px; min-height: 30px; border-radius: 8px; }
-    .stDateInput>div>div>input { min-height: 30px; border-radius: 8px; }
-    div[data-testid="stExpander"] { border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.05); margin-bottom: 10px; }
+    .main { background-color: #f4f7f9; }
     
-    /* هيدر الشركة */
+    /* الهيدر الجديد (أيقونة الشركة) */
     .company-header {
         display: flex; align-items: center; justify-content: space-between;
-        padding: 15px 25px; background: white; border-radius: 12px; margin-bottom: 20px;
-        box-shadow: 0 2px 10px rgba(0,0,0,0.05); border-right: 5px solid #5d5fef;
+        padding: 10px 25px; background: white; border-radius: 15px; margin-bottom: 30px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-right: 6px solid #5d5fef;
     }
 
-    /* الـ Timeline الاحترافي */
-    .timeline-container {
-        display: flex; justify-content: space-around; align-items: flex-start;
-        background: white; padding: 25px; border-radius: 15px; margin-top: 20px;
-        box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    /* حاوية الخطوة (التصميم القديم) */
+    .step-block { position: relative; padding-right: 60px; margin-bottom: 25px; }
+
+    /* الخط العمودي المتصل */
+    .step-block::before {
+        content: ""; position: absolute; right: 28px; top: 40px; bottom: -40px;
+        width: 3px; background-color: #5d5fef; z-index: 1; opacity: 0.3;
     }
-    .step-item { text-align: center; position: relative; flex: 1; }
-    .step-dot { 
-        width: 30px; height: 30px; background: #e0e0e0; border-radius: 50%; 
-        margin: 0 auto 10px; display: flex; align-items: center; justify-content: center;
-        color: white; font-weight: bold; font-size: 14px;
+    .step-block:last-child::before { display: none; }
+
+    /* الدوائر الرقمية القديمة */
+    .step-icon {
+        position: absolute; right: 8px; top: 0;
+        width: 42px; height: 42px; border-radius: 50%;
+        background-color: #5d5fef; color: white;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: bold; z-index: 3; font-size: 20px;
+        box-shadow: 0 4px 10px rgba(93,95,239,0.3);
     }
-    .step-item.active .step-dot { background: #5d5fef; box-shadow: 0 0 10px rgba(93,95,239,0.5); }
-    .step-label { font-size: 14px; color: #333; font-weight: 500; }
-    .step-status { font-size: 11px; color: #888; }
+
+    /* بطاقة المحتوى والعنوان بداخل الشكل */
+    .content-box { background-color: white; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.04); overflow: hidden; border: 1px solid #eef0f2; }
+    .step-header { background: linear-gradient(90deg, #5d5fef, #7a7cfc); color: white; padding: 12px 25px; font-size: 17px; font-weight: bold; }
+    .form-body { padding: 20px 25px; }
+
+    /* تصغير الحقول */
+    .stTextInput>div>div>input, .stSelectbox>div>div>div { min-height: 35px !important; }
+
+    /* التايم لاين الجديد */
+    .timeline-wrapper {
+        display: flex; justify-content: space-around; background: white; 
+        padding: 20px; border-radius: 15px; margin-top: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    }
+    .t-step { text-align: center; flex: 1; }
+    .t-dot { width: 25px; height: 25px; background: #ddd; border-radius: 50%; margin: 0 auto 8px; }
+    .t-step.active .t-dot { background: #5d5fef; box-shadow: 0 0 8px #5d5fef; }
+    .t-label { font-size: 13px; font-weight: bold; }
     </style>
     """, unsafe_allow_html=True)
 
-# إدارة حالة الصفحة (Navigation Logic)
+# إدارة الصفحات
 if 'page' not in st.session_state:
     st.session_state.page = 'form'
 
-# دالة تهيئة قاعدة البيانات المحلية (SQLite)
-def init_db():
-    conn = sqlite3.connect('requests.db')
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS requests
-                 (id INTEGER PRIMARY KEY AUTOINCREMENT,
-                  job_number TEXT, name TEXT, job_title TEXT, unit TEXT, 
-                  subject_type TEXT, subject_date TEXT, notes TEXT, 
-                  signature_path TEXT, status TEXT, stage INTEGER)''')
-    conn.commit()
-    conn.close()
-
-init_db()
-
-# 5. أيقونة الشركة + نص القسم (Header)
-st.markdown("""
+# 5. هيدر الشركة
+st.markdown(f"""
     <div class="company-header">
         <div style="display: flex; align-items: center;">
-            <div style="background: #5d5fef; padding: 8px; border-radius: 8px; margin-left: 15px;">
-                <img src="https://cdn-icons-png.flaticon.com/512/281/281764.png" width="30" style="filter: brightness(0) invert(1);">
-            </div>
-            <div>
-                <div style="font-weight: bold; font-size: 18px; color: #2d3436;">مؤسسة الرؤية الرقمية</div>
-                <div style="font-size: 13px; color: #636e72;">نظام إدارة شؤون الموظفين الموحد</div>
+            <img src="https://cdn-icons-png.flaticon.com/512/281/281764.png" width="35">
+            <div style="margin-right: 15px;">
+                <div style="font-weight: bold; font-size: 18px;">مؤسسة المسار المتكامل</div>
+                <div style="font-size: 12px; color: #666;">قسم الموارد البشرية - HR</div>
             </div>
         </div>
-        <div style="text-align: left;">
-            <div style="font-weight: 600; color: #5d5fef;">قسم الموارد البشرية</div>
-            <div style="font-size: 11px; color: #b2bec3;">تاريخ اليوم: """ + datetime.now().strftime('%Y-%m-%d') + """</div>
-        </div>
+        <div style="text-align: left; color: #5d5fef; font-weight: bold;">نموذج طلب إلكتروني</div>
     </div>
     """, unsafe_allow_html=True)
 
-# الشريط الجانبي (Drop-down فقط بدون عناوين)
+# القائمة الجانبية (Drop-down فقط)
 with st.sidebar:
     choice = st.selectbox("", ["تقديم طلب جديد", "متابعة الطلبات"], label_visibility="collapsed")
-    if choice == "متابعة الطلبات":
-        st.session_state.page = 'tracking'
+    if choice == "متابعة الطلبات": st.session_state.page = 'tracking'
 
-# --- الصفحة الأولى: نموذج تقديم الطلب ---
+# --- صفحة النموذج (الشكل القديم) ---
 if st.session_state.page == 'form':
-    st.markdown("<h4 style='margin-bottom:20px;'>📝 إنشاء طلب إداري جديد</h4>", unsafe_allow_html=True)
     
-    # استخدام حاوية لتقليل العرض وجعلها Compact
-    col_content = st.columns([1, 8, 1])[1]
-    
-    with col_content:
-        # الخطوة 1: بيانات الموظف
-        with st.expander("👤 1. بيانات مقدم الطلب", expanded=True):
-            c1, c2 = st.columns(2)
-            job_num = c1.text_input("الرقم الوظيفي")
-            full_name = c2.text_input("الاسم الكامل")
-            job_title = c1.text_input("المسمى الوظيفي")
-            unit = c2.text_input("الوحدة / القسم")
-        
-        # الخطوة 2: تفاصيل الطلب
-        with st.expander("📄 2. تفاصيل موضوع الطلب والاعتماد", expanded=True):
-            c3, c4 = st.columns(2)
-            sub_type = c3.selectbox("نوع الطلب", ["نقل", "تغيير مهنة", "إنهاء خدمة"])
-            # 1. تاريخ السريان أوتوماتيك
-            sub_date = c4.date_input("تاريخ سريان الطلب", value=datetime.now(), disabled=True)
-            
-            notes = st.text_area("ملاحظات إضافية", height=60)
-            
-            st.markdown("<div style='margin-top:10px; font-weight:bold; font-size:14px;'>✍️ التوقيع الرقمي (صورة)</div>", unsafe_allow_html=True)
-            # 2. التوقيع الرقمي كصورة
-            sig_file = st.file_uploader("اسحب صورة توقيعك هنا أو اختر ملف", type=['png', 'jpg', 'jpeg'], label_visibility="collapsed")
+    # الخطوة 1
+    st.markdown('<div class="step-block"><div class="step-icon">1</div>', unsafe_allow_html=True)
+    with st.container():
+        st.markdown('<div class="content-box"><div class="step-header">👤 الخطوة الأولى: بيانات مقدم الطلب</div><div class="form-body">', unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        job_num = c1.text_input("الرقم الوظيفي")
+        name = c2.text_input("الاسم الكامل")
+        title = c1.text_input("المسمى الوظيفي")
+        dept = c2.text_input("الوحدة / القسم")
+        st.markdown('</div></div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-        # زر الإرسال
-        if st.button("إرسال الطلب للاعتماد النهائي"):
-            if job_num and full_name and sig_file:
-                # 3. إظهار Pop-up نجاح (Toast)
-                st.toast("✅ جاري إرسال الطلب وحفظ البيانات...", icon="📩")
-                time.sleep(1.5)
-                
-                # حفظ البيانات في SQLite (محاكاة)
-                st.toast("🚀 تم الإرسال بنجاح! يتم الآن تحويلك...", icon="🎉")
-                
-                # 7. تحويل أوتوماتيك لصفحة الطلبات
+    # الخطوة 2
+    st.markdown('<div class="step-block"><div class="step-icon">2</div>', unsafe_allow_html=True)
+    with st.container():
+        st.markdown('<div class="content-box"><div class="step-header">📝 الخطوة الثانية: تفاصيل الطلب والاعتماد</div><div class="form-body">', unsafe_allow_html=True)
+        c3, c4 = st.columns(2)
+        req_type = c3.selectbox("نوع الطلب", ["نقل", "تغيير مهنة", "إنهاء خدمة"])
+        # 1. تاريخ تلقائي
+        eff_date = c4.date_input("تاريخ سريان الطلب (تلقائي)", value=datetime.now(), disabled=True)
+        
+        st.text_area("ملاحظات إضافية", height=70)
+        
+        st.markdown("<br><b>✍️ التوقيع الرقمي (رفع صورة التوقيع)</b>", unsafe_allow_html=True)
+        # 2. التوقيع كصورة
+        sig_file = st.file_uploader("ارفق صورة توقيعك هنا", type=['png', 'jpg', 'jpeg'], label_visibility="collapsed")
+        
+        if st.button("إرسال الطلب الآن"):
+            if job_num and name and sig_file:
+                # 3. Pop-up نجاح
+                st.toast("✅ تم إرسال طلبك بنجاح!", icon="🎉")
+                time.sleep(1)
+                # 7. تحويل تلقائي
                 st.session_state.page = 'tracking'
                 st.rerun()
             else:
-                st.error("⚠️ يرجى التأكد من إدخال كافة البيانات ورفع صورة التوقيع.")
+                st.error("⚠️ يرجى إكمال البيانات ورفع صورة التوقيع")
+        st.markdown('</div></div>', unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
-# --- الصفحة الثانية: متابعة الطلبات والـ Timeline ---
+# --- صفحة التتبع (Timeline) ---
 elif st.session_state.page == 'tracking':
-    st.markdown("<h4 style='margin-bottom:10px;'>🔍 تتبع حالة معاملاتك</h4>", unsafe_allow_html=True)
+    st.markdown("<h4>🔍 حالة الطلبات المقدمة</h4>", unsafe_allow_html=True)
     
-    # 4. التايم لاين للطلب الأخير
-    st.markdown("""
-        <div class="timeline-container">
-            <div class="step-item active">
-                <div class="step-dot">1</div>
-                <div class="step-label">تقديم الطلب</div>
-                <div class="step-status">مكتمل</div>
-            </div>
-            <div class="step-item active">
-                <div class="step-dot">2</div>
-                <div class="step-label">مراجعة HR</div>
-                <div class="step-status">قيد المعالجة</div>
-            </div>
-            <div class="step-item">
-                <div class="step-dot">3</div>
-                <div class="step-label">اعتماد المدير</div>
-                <div class="step-status">بانتظار</div>
-            </div>
-            <div class="step-item">
-                <div class="step-dot">4</div>
-                <div class="step-label">الأرشفة</div>
-                <div class="step-status">---</div>
-            </div>
+    # 4. Timeline
+    st.markdown(f"""
+        <div class="timeline-wrapper">
+            <div class="t-step active"><div class="t-dot"></div><div class="t-label">تم التقديم</div></div>
+            <div class="t-step active"><div class="t-dot"></div><div class="t-label">مراجعة الموارد</div></div>
+            <div class="t-step"><div class="t-dot"></div><div class="t-label">اعتماد الإدارة</div></div>
+            <div class="t-step"><div class="t-dot"></div><div class="t-label">مكتمل</div></div>
         </div>
     """, unsafe_allow_html=True)
     
+    st.info(f"مرحباً {name if 'name' in locals() else ''}، طلبك حالياً في مرحلة التدقيق من قبل قسم الموارد البشرية.")
     
-
-    st.success("حالة الطلب: تم استلام طلبك وهو الآن في مرحلة **المراجعة الفنية** لدى قسم الموارد البشرية.")
-    
-    if st.button("⬅️ العودة لتقديم طلب جديد"):
+    if st.button("العودة للرئيسية"):
         st.session_state.page = 'form'
         st.rerun()
