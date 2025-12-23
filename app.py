@@ -51,7 +51,7 @@ if 'page' not in st.session_state:
 # 3. الهيدر
 st.markdown("""
     <div class="company-header">
-        <div class="header-logo"><img src="https://cdn-icons-png.flaticon.com/512/281/281764.png"></div>
+        <div class="header-logo"><img src=https://iconape.com/wp-content/png_logo_vector/%D8…8A%D8%A9-%D8%A3%D8%A8%D9%88%D8%B8%D8%A8%D9%8A.png
         <div class="header-text">
             <h1>مؤسسة المسار المتكامل</h1>
             <p>قسم الموارد البشرية - نموذج الطلبات الإلكتروني</p>
@@ -141,3 +141,4 @@ elif st.session_state.page == 'tracking':
     if st.button("العودة لتقديم طلب جديد"):
         st.session_state.page = 'form'
         st.rerun()
+
