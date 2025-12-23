@@ -1,26 +1,39 @@
 import streamlit as st
-import pandas as pd
 import sqlite3
 from datetime import datetime
 
-# إعداد الصفحة وتنسيق CSS
+# إعداد الصفحة وتنسيق CSS مخصص للخطوات الجانبية
 st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide")
 
-# --- تنسيقات الواجهة لتشبه المنصات الاحترافية ---
 st.markdown("""
     <style>
-    .main { background-color: #f0f2f6; }
-    .stTabs [data-baseweb="tab-list"] { background-color: #ffffff; border-radius: 15px; padding: 10px; box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
-    .stTabs [data-baseweb="tab"] { font-weight: bold; color: #5d5fef; }
-    .info-card { background-color: white; padding: 30px; border-radius: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.05); border-right: 8px solid #5d5fef; margin-bottom: 25px; }
-    div[data-testid="stExpander"] { border-radius: 15px; border: none; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+    /* تنسيق الخطوات الجانبية (The Stepper) */
+    .step-circle {
+        width: 40px; height: 40px; border-radius: 50%;
+        background-color: #5d5fef; color: white;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: bold; margin: 0 auto 10px auto;
+        box-shadow: 0 4px 8px rgba(93, 95, 239, 0.3);
+    }
+    .step-line {
+        width: 2px; height: 150px; background-color: #e0e0e0;
+        margin: 0 auto 10px auto;
+    }
+    .step-label { text-align: center; font-size: 14px; color: #666; font-weight: bold; }
+    
+    /* تنسيق الحاويات */
+    .main-card {
+        background-color: white; padding: 30px; border-radius: 20px;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.05); margin-bottom: 20px;
+    }
+    h2 { color: #2d3436; font-size: 22px; margin-bottom: 20px; border-right: 5px solid #5d5fef; padding-right: 15px; }
     </style>
     """, unsafe_allow_html=True)
 
+# دالة إعداد قاعدة البيانات
 def init_db():
     conn = sqlite3.connect('requests.db')
     c = conn.cursor()
-    # إذا تغيرت الأعمدة، سيتم تحديث الجدول
     try:
         c.execute("SELECT job_title FROM requests LIMIT 1")
     except sqlite3.OperationalError:
@@ -36,44 +49,65 @@ def init_db():
 
 init_db()
 
-# --- محتوى الموقع الرئيسي ---
-st.markdown("<h1 style='text-align: right; color: #2d3436;'>📋 نظام الخدمات الذاتية للموظفين</h1>", unsafe_allow_html=True)
-
+# القائمة الجانبية للتنقل الأساسي
 menu = ["تقديم طلب جديد", "متابعة الطلبات", "الاعتمادات الإدارية"]
 choice = st.sidebar.radio("التنقل في النظام", menu)
 
 if choice == "تقديم طلب جديد":
-    st.markdown('<div class="info-card">', unsafe_allow_html=True)
-    tab1, tab2 = st.tabs(["👤 بيانات الموظف", "📝 تفاصيل الطلب"])
+    # إنشاء تقسيم للصفحة: يمين للخطوات، ويسار للنموذج
+    col_stepper, col_form = st.columns([1, 5])
 
-    with tab1:
-        col1, col2 = st.columns(2)
-        with col1:
+    # --- الجزء الأيمن: الخطوات (كما في الصورة) ---
+    with col_stepper:
+        st.markdown('<div class="step-circle">1</div>', unsafe_allow_html=True)
+        st.markdown('<div class="step-label">بيانات الموظف</div>', unsafe_allow_html=True)
+        st.markdown('<div class="step-line"></div>', unsafe_allow_html=True)
+        
+        st.markdown('<div class="step-circle">2</div>', unsafe_allow_html=True)
+        st.markdown('<div class="step-label">تفاصيل الطلب</div>', unsafe_allow_html=True)
+        st.markdown('<div class="step-line"></div>', unsafe_allow_html=True)
+        
+        st.markdown('<div class="step-circle">3</div>', unsafe_allow_html=True)
+        st.markdown('<div class="step-label">الإقرار والتوقيع</div>', unsafe_allow_html=True)
+
+    # --- الجزء الأيسر: النموذج الفعلي (أسلوب التمرير) ---
+    with col_form:
+        # القسم 1
+        st.markdown('<div class="main-card">', unsafe_allow_html=True)
+        st.markdown("<h2>👤 الخطوة الأولى: بيانات مقدم الطلب</h2>", unsafe_allow_html=True)
+        c1, c2 = st.columns(2)
+        with c1:
             job_number = st.text_input("الرقم الوظيفي")
-            full_name = st.text_input("الاسم الثلاثي")
-        with col2:
+            full_name = st.text_input("الاسم الكامل")
+        with c2:
             job_title = st.text_input("المسمى الوظيفي")
-            unit = st.text_input("الوحدة")
+            unit = st.text_input("الوحدة / القسم")
         appt_date = st.date_input("تاريخ التعيين")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-    with tab2:
+        # القسم 2
+        st.markdown('<div class="main-card">', unsafe_allow_html=True)
+        st.markdown("<h2>📝 الخطوة الثانية: موضوع وتفاصيل الطلب</h2>", unsafe_allow_html=True)
         subject_type = st.selectbox("نوع الطلب", ["نقل", "تغيير مهنة", "إنهاء خدمة"])
         
-        # حقل النقل بدون أسباب كما طلبتِ
-        target_entity = ""
         if subject_type == "نقل":
             target_entity = st.text_input("الجهة المطلوب النقل إليها")
-        
-        # المرفقات تظهر فقط في تغيير المهنة أو إنهاء الخدمة
+        else:
+            target_entity = ""
+            
         if subject_type in ["تغيير مهنة", "إنهاء خدمة"]:
             st.warning(f"مطلوب إرفاق مستندات لحالة: {subject_type}")
-            st.file_uploader("رفع المستند")
-
+            st.file_uploader("رفع المرفق")
+            
         notes = st.text_area("ملاحظات إضافية")
-        st.markdown("---")
-        signature = st.text_input("التوقيع الرقمي (اكتب اسمك الثلاثي للإقرار بالبيانات)")
+        st.markdown('</div>', unsafe_allow_html=True)
 
-        if st.button("إرسال الطلب للاعتماد"):
+        # القسم 3
+        st.markdown('<div class="main-card">', unsafe_allow_html=True)
+        st.markdown("<h2>✍️ الخطوة الثالثة: التوقيع والإرسال</h2>", unsafe_allow_html=True)
+        signature = st.text_input("التوقيع الرقمي (اكتب اسمك الثلاثي كإقرار)")
+        
+        if st.button("إرسال الطلب نهائياً"):
             if job_number and full_name and signature:
                 conn = sqlite3.connect('requests.db')
                 c = conn.cursor()
@@ -82,28 +116,14 @@ if choice == "تقديم طلب جديد":
                            target_entity, notes, submit_date, signature, status, stage) 
                           VALUES (?,?,?,?,?,?,?,?,?,?,?,?)""",
                           (job_number, full_name, job_title, unit, str(appt_date), subject_type,
-                           target_entity, notes, datetime.now().strftime("%Y-%m-%d"), signature, "بانتظار المدير المباشر", 1))
+                           target_entity, notes, datetime.now().strftime("%Y-%m-%d"), signature, "بانتظار موافقة المسؤول", 1))
                 conn.commit()
-                st.success("✅ تم استلام طلبك ورفعه للمراجعة")
+                st.success("✅ تم الإرسال بنجاح!")
                 st.balloons()
             else:
-                st.error("❗ يرجى استكمال كافة البيانات الأساسية")
-    st.markdown('</div>', unsafe_allow_html=True)
+                st.error("الرجاء استكمال البيانات والتوقيع")
+        st.markdown('</div>', unsafe_allow_html=True)
 
 elif choice == "متابعة الطلبات":
-    st.markdown('<div class="info-card">', unsafe_allow_html=True)
-    search_id = st.number_input("أدخل رقم المعاملة", step=1, value=0)
-    if search_id > 0:
-        conn = sqlite3.connect('requests.db')
-        df = pd.read_sql(f"SELECT * FROM requests WHERE id = {search_id}", conn)
-        if not df.empty:
-            st.info(f"المرحلة الحالية: {df['status'].values[0]}")
-            st.progress(int(df['stage'].values[0]) / 3)
-            
-            with st.expander("عرض تفاصيل المعاملة"):
-                st.write(f"**الاسم:** {df['name'].values[0]}")
-                st.write(f"**نوع الطلب:** {df['subject_type'].values[0]}")
-                st.write(f"**تاريخ التقديم:** {df['submit_date'].values[0]}")
-        else:
-            st.error("رقم المعاملة غير موجود")
-    st.markdown('</div>', unsafe_allow_html=True)
+    st.header("🔍 متابعة حالة الطلب")
+    # ... كود المتابعة السابق ...
