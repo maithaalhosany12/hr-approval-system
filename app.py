@@ -2,90 +2,107 @@ import streamlit as st
 from datetime import datetime
 import time
 
-# 1. إعداد الصفحة وتوسيع العرض
-st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide", initial_sidebar_state="expanded")
+# 1. إعداد الصفحة (نفس العرض والنمط القديم)
+st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide", initial_sidebar_state="collapsed")
 
-# 2. التنسيق الشامل (الدزاين القديم + الحقول القصيرة)
+# 2. تنسيق CSS القديم (الفخم) مع تعديل عرض الحقول فقط
 st.markdown("""
     <style>
     /* التوجه العام */
     .main { direction: rtl !important; text-align: right !important; background-color: #f4f7f9; }
     
-    /* الشريط الجانبي - Sidebar */
-    [data-testid="stSidebar"] { background-color: white !important; direction: rtl !important; }
-    
-    /* تقليص عرض الحاوية */
-    .block-container { max-width: 1000px !important; padding-top: 1rem; }
+    /* تقليص عرض الحاوية ليكون التصميم ملموم في الوسط */
+    .block-container { max-width: 950px !important; padding-top: 2rem; }
 
-    /* الهيدر الرسمي في المنتصف */
-    .header-box {
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-        background: white; padding: 15px; border-radius: 15px; margin-bottom: 30px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05); text-align: center;
+    /* الهيدر القديم (المسمى يمين والشعار بجانبه) */
+    .company-header {
+        display: flex; align-items: center; justify-content: flex-start;
+        padding: 15px 25px; background: white; border-radius: 15px; margin-bottom: 25px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-right: 6px solid #5d5fef;
     }
-    .header-box img { width: 50px; margin-bottom: 8px; }
+    .header-logo { margin-left: 15px; }
+    .header-logo img { width: 45px; }
+    .header-text h1 { margin: 0; font-size: 19px; color: #2d3436; font-weight: bold; }
+    .header-text p { margin: 0; font-size: 12px; color: #666; }
 
-    /* السلم الجانبي (التصميم القديم) */
-    .step-container { position: relative; padding-right: 65px; margin-bottom: 30px; }
-    .step-line {
-        position: absolute; right: 30px; top: 40px; bottom: -40px;
-        width: 3px; background: #5d5fef; opacity: 0.2; z-index: 1;
+    /* الخط الجانبي والدوائر المرقمة (الدزاين القديم) */
+    .step-block { position: relative; padding-right: 60px; margin-bottom: 30px; }
+    .step-block::before {
+        content: ""; position: absolute; right: 28px; top: 45px; bottom: -45px;
+        width: 3px; background-color: #5d5fef; z-index: 1; opacity: 0.2;
     }
-    .step-container:last-child .step-line { display: none; }
-    
-    .step-circle {
-        position: absolute; right: 10px; top: 0;
+    .step-block:last-child::before { display: none; }
+
+    .step-icon {
+        position: absolute; right: 8px; top: 0;
         width: 42px; height: 42px; border-radius: 50%;
-        background: #5d5fef; color: white; display: flex;
-        align-items: center; justify-content: center; font-weight: bold;
-        font-size: 18px; z-index: 2; box-shadow: 0 4px 10px rgba(93,95,239,0.3);
+        background-color: #5d5fef; color: white;
+        display: flex; align-items: center; justify-content: center;
+        font-weight: bold; z-index: 3; font-size: 18px;
+        box-shadow: 0 4px 10px rgba(93,95,239,0.3);
     }
 
-    /* البطاقة والعناوين */
-    .content-card { 
-        background: white; border-radius: 15px; overflow: hidden;
-        box-shadow: 0 8px 20px rgba(0,0,0,0.04); border: 1px solid #eef0f2;
-    }
-    .step-title-bar { 
+    /* بطاقة المحتوى والعناوين الملونة */
+    .content-box { background-color: white; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.04); overflow: hidden; border: 1px solid #eef0f2; }
+    .step-header { 
         background: linear-gradient(90deg, #5d5fef, #7a7cfc); 
-        color: white; padding: 10px 25px; font-size: 16px; font-weight: bold;
+        color: white; padding: 12px 25px; font-size: 16px; font-weight: bold;
+        display: flex; justify-content: space-between; align-items: center;
     }
-    .form-padding { padding: 20px 25px; }
+    .step-number-circle {
+        background-color: rgba(255, 255, 255, 0.2);
+        width: 28px; height: 28px; border-radius: 50%;
+        display: flex; align-items: center; justify-content: center;
+        font-size: 14px; border: 1px solid white;
+    }
+    .form-body { padding: 25px; }
 
-    /* مربعات التعبئة القصيرة */
+    /* تقصير عرض مربعات التعبئة بجعلها نحيفة ومنظمة */
     .stTextInput>div>div>input, .stSelectbox>div>div>div, .stDateInput>div>div>input {
         min-height: 35px !important; height: 35px !important;
-        text-align: right !important; border-radius: 8px !important;
+        text-align: right !important; font-size: 14px !important;
+        border-radius: 8px !important;
     }
-    label { font-size: 13px !important; font-weight: bold !important; color: #475569 !important; }
+    label { font-size: 13px !important; font-weight: bold !important; margin-bottom: 5px !important; }
     </style>
     """, unsafe_allow_html=True)
 
-# 3. محتوى الشريط الجانبي (Sidebar)
-with st.sidebar:
-    st.image("https://cdn-icons-png.flaticon.com/512/281/281764.png", width=50)
-    st.title("القائمة الرئيسية")
-    menu = st.radio("انتقل إلى:", ["تقديم طلب جديد", "تتبع حالة الطلبات"])
-    st.divider()
-    st.info("نظام الموارد البشرية V2.0")
-
-# 4. الهيدر في الصفحة الرئيسية
+# 3. الهيدر القديم الفخم
 st.markdown("""
-    <div class="header-box">
-        <img src="https://cdn-icons-png.flaticon.com/512/281/281764.png">
-        <h2 style="margin:0; font-size:22px;">مؤسسة المسار المتكامل</h2>
-        <p style="margin:0; color:#5d5fef; font-weight:bold;">نموذج طلبات شؤون الموظفين</p>
+    <div class="company-header">
+        <div class="header-logo">
+            <img src="https://cdn-icons-png.flaticon.com/512/281/281764.png">
+        </div>
+        <div class="header-text">
+            <h1>مؤسسة المسار المتكامل</h1>
+            <p>قسم الموارد البشرية - نموذج الطلبات الإلكتروني</p>
+        </div>
     </div>
     """, unsafe_allow_html=True)
 
-# --- محتوى النموذج ---
-if menu == "تقديم طلب جديد":
+if 'page' not in st.session_state:
+    st.session_state.page = 'form'
+
+with st.sidebar:
+    st.title("القائمة")
+    choice = st.selectbox("", ["تقديم طلب جديد", "متابعة الطلبات"], label_visibility="collapsed")
+    if choice == "متابعة الطلبات": st.session_state.page = 'tracking'
+
+# --- صفحة النموذج ---
+if st.session_state.page == 'form':
     
     # الخطوة 1
-    st.markdown('<div class="step-container"><div class="step-circle">1</div><div class="step-line"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="step-block"><div class="step-icon">1</div>', unsafe_allow_html=True)
     with st.container():
-        st.markdown('<div class="content-card"><div class="step-title-bar">👤 الخطوة الأولى: البيانات الشخصية</div><div class="form-padding">', unsafe_allow_html=True)
-        # الحقول بجانب بعضها لتقصير المساحة
+        st.markdown('''
+            <div class="content-box">
+                <div class="step-header">
+                    <span>👤 الخطوة الأولى: بيانات مقدم الطلب</span>
+                    <div class="step-number-circle">1</div>
+                </div>
+                <div class="form-body">
+        ''', unsafe_allow_html=True)
+        # تقسيم الحقول لأعمدة لتقصير عرضها
         c1, c2, c3, c4 = st.columns(4)
         with c1: st.text_input("الرقم الوظيفي")
         with c2: st.text_input("الاسم الكامل")
@@ -95,22 +112,31 @@ if menu == "تقديم طلب جديد":
     st.markdown('</div>', unsafe_allow_html=True)
 
     # الخطوة 2
-    st.markdown('<div class="step-container"><div class="step-circle">2</div><div class="step-line"></div>', unsafe_allow_html=True)
+    st.markdown('<div class="step-block"><div class="step-icon">2</div>', unsafe_allow_html=True)
     with st.container():
-        st.markdown('<div class="content-card"><div class="step-title-bar">📝 الخطوة الثانية: تفاصيل الطلب</div><div class="form-padding">', unsafe_allow_html=True)
+        st.markdown('''
+            <div class="content-box">
+                <div class="step-header">
+                    <span>📝 الخطوة الثانية: تفاصيل الطلب</span>
+                    <div class="step-number-circle">2</div>
+                </div>
+                <div class="form-body">
+        ''', unsafe_allow_html=True)
         c5, c6, c7 = st.columns([1, 1, 2])
-        with c5: st.selectbox("نوع الطلب", ["نقل", "تعديل", "أخرى"])
+        with c5: st.selectbox("نوع الطلب", ["نقل", "تعديل", "إنهاء"])
         with c6: st.date_input("التاريخ", value=datetime.now(), disabled=True)
         with c7: st.text_input("ملاحظات إضافية")
         
-        st.markdown("<br><b>✍️ التوقيع والموافقة</b>", unsafe_allow_html=True)
+        st.markdown("<br><b>✍️ التوقيع الرقمي</b>", unsafe_allow_html=True)
         c8, c9 = st.columns([3, 1])
-        with c8: st.file_uploader("ارفق صورة التوقيع", type=['png', 'jpg'], label_visibility="collapsed")
-        with c9: st.button("إرسال الآن", use_container_width=True)
+        with c8: st.file_uploader("", type=['png', 'jpg'], label_visibility="collapsed")
+        with c9: st.button("إرسال الطلب", use_container_width=True)
         st.markdown('</div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
 # --- صفحة التتبع ---
-else:
-    st.markdown("<h3>🔍 تتبع طلباتك</h3>", unsafe_allow_html=True)
-    st.write("لا توجد طلبات سابقة لعرضها حالياً.")
+elif st.session_state.page == 'tracking':
+    st.info("جاري مراجعة طلبك...")
+    if st.button("رجوع"):
+        st.session_state.page = 'form'
+        st.rerun()
