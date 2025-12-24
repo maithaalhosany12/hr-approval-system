@@ -52,7 +52,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-# 2. إدارة الحالة (لتخزين البيانات والتنقل)
+# 2. إدارة الحالة
 if 'page' not in st.session_state: st.session_state.page = 'form'
 if 'stage' not in st.session_state: st.session_state.stage = 1
 if 'order_id' not in st.session_state: st.session_state.order_id = f"REQ-{random.randint(1000, 9999)}"
@@ -60,24 +60,21 @@ if 'order_id' not in st.session_state: st.session_state.order_id = f"REQ-{random
 # 3. الهيدر الرسمي
 st.markdown('<div class="company-header"><div class="header-logo"><img src="https://cdn-icons-png.flaticon.com/512/281/281764.png"></div><div class="header-text"><h1>مؤسسة المسار المتكامل</h1><p>قسم الموارد البشرية - بوابة الموظفين</p></div></div>', unsafe_allow_html=True)
 
-# القائمة الجانبية للتنقل
+# القائمة الجانبية
 with st.sidebar:
     st.title("⚙️ الخيارات")
     choice = st.selectbox("القائمة:", ["تقديم طلب جديد", "متابعة الطلبات", "الاعتمادات"], 
                           index=0 if st.session_state.page == 'form' else 1 if st.session_state.page == 'tracking' else 2)
     st.session_state.page = 'form' if choice == "تقديم طلب جديد" else 'tracking' if choice == "متابعة الطلبات" else 'approvals'
 
-# --- الصفحة 1: تقديم الطلب (النموذج الأصلي + الإضافات) ---
+# --- الصفحة 1: تقديم الطلب (بدون تغيير) ---
 if st.session_state.page == 'form':
-    # الخطوة 1
     st.markdown('<div class="step-block"><div class="step-icon">1</div>', unsafe_allow_html=True)
     with st.container():
         st.markdown('<div class="content-box"><div class="step-header">👤 الخطوة الأولى: بيانات مقدم الطلب</div><div class="form-body">', unsafe_allow_html=True)
-        # إضافة حقل رقم الطلب دون تغيير النموذج
         r_col, _ = st.columns([1, 4])
         with r_col: st.text_input("رقم الطلب", value=st.session_state.order_id, disabled=True)
-        
-        c1, c2, c3, c4, c5 = st.columns(5) # الـ 5 حقول الأصلية
+        c1, c2, c3, c4, c5 = st.columns(5)
         with c1: st.text_input("الرقم الوظيفي")
         with c2: st.text_input("الاسم الكامل")
         with c3: st.text_input("المسمى")
@@ -86,84 +83,76 @@ if st.session_state.page == 'form':
         st.markdown('</div></div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # الخطوة 2
     st.markdown('<div class="step-block"><div class="step-icon">2</div>', unsafe_allow_html=True)
     with st.container():
         st.markdown('<div class="content-box"><div class="step-header">📝 الخطوة الثانية: تفاصيل الطلب</div><div class="form-body">', unsafe_allow_html=True)
         c6, c7 = st.columns(2)
         with c6: req_type = st.selectbox("نوع الطلب", ["نقل داخلي", "تعديل مهنة", "إنهاء خدمة"])
         with c7: st.date_input("تاريخ السريان", value=datetime.now(), disabled=True)
-        
-        # إضافة المرفق الشرطي
         if req_type in ["تعديل مهنة", "إنهاء خدمة"]:
             st.markdown(f'<div class="attachment-box">📎 <b>مرفق مطلوب:</b> يرجى تحميل الوثائق الرسمية الخاصة بطلب ({req_type})</div>', unsafe_allow_html=True)
             st.file_uploader("تحميل المستندات", type=['pdf', 'png', 'jpg'], key="file_up")
-
-        # الملاحظات الكبيرة الأصلية
-        st.text_area("ملاحظات إضافية تفصيلية", height=120, placeholder="اكتب ملاحظاتك هنا...")
-        
+        st.text_area("ملاحظات إضافية تفصيلية", height=120)
         c9, c10 = st.columns([3, 1])
         with c9: st.file_uploader("توقيع الموظف", type=['png', 'jpg'], key="emp_sig")
         with c10: 
             if st.button("إرسال الطلب الآن", use_container_width=True):
-                st.success(f"🎉 تم إرسال الطلب رقم {st.session_state.order_id} بنجاح!")
-                time.sleep(1.5)
+                st.success(f"🎉 تم إرسال الطلب {st.session_state.order_id} بنجاح!")
+                time.sleep(1)
                 st.session_state.page = 'tracking'
                 st.rerun()
         st.markdown('</div></div></div>', unsafe_allow_html=True)
     st.markdown('</div>', unsafe_allow_html=True)
 
-# --- الصفحة 2: متابعة الطلبات (جدول مستقل) ---
+# --- الصفحة 2: متابعة الطلبات (بدون تغيير) ---
 elif st.session_state.page == 'tracking':
-    st.markdown("### 🔍 سجل الطلبات المقدمة")
-    st.markdown(f"""
-    <div class="content-box">
-        <div class="form-body">
-            <table class="styled-table">
-                <thead>
-                    <tr><th>رقم الطلب</th><th>نوع الطلب</th><th>تاريخ التقديم</th><th>الحالة</th></tr>
-                </thead>
-                <tbody>
-                    <tr><td>{st.session_state.order_id}</td><td>طلب حالي</td><td>{datetime.now().strftime('%Y-%m-%d')}</td><td>بانتظار الاعتماد</td></tr>
-                </tbody>
-            </table>
-        </div>
-    </div>
-    """, unsafe_allow_html=True)
+    st.markdown("### 🔍 سجل الطلبات")
+    st.markdown(f'<div class="content-box"><div class="form-body"><table class="styled-table"><thead><tr><th>رقم الطلب</th><th>النوع</th><th>التاريخ</th><th>الحالة</th></tr></thead><tbody><tr><td>{st.session_state.order_id}</td><td>طلب حالي</td><td>{datetime.now().strftime("%Y-%m-%d")}</td><td>قيد المراجعة</td></tr></tbody></table></div></div>', unsafe_allow_html=True)
 
-# --- الصفحة 3: الاعتمادات (نظام الاختيار + التسلسل) ---
+# --- الصفحة 3: الاعتمادات (إضافة الخانات الجديدة) ---
 elif st.session_state.page == 'approvals':
     st.markdown("### ✅ منصة اعتماد الطلبات")
+    order_select = st.selectbox("اختر الطلب من السجل:", ["--- اختر طلباً ---", f"{st.session_state.order_id} - مراجعة إدارية"])
     
-    # إضافة ميزة اختيار الطلب قبل البدء
-    order_select = st.selectbox("اختر الطلب من السجل للمراجعة والاعتماد:", ["--- اختر من القائمة ---", f"{st.session_state.order_id} - طلب مقدم"])
-    
-    if order_select != "--- اختر من القائمة ---":
+    if order_select != "--- اختر طلباً ---":
         st.info(f"مراجعة: {order_select}")
         col1, col2, col3 = st.columns(3)
         
+        # 1. المدير المباشر
         with col1:
             active = st.session_state.stage == 1
             st.markdown(f'<div class="approval-card {"active-card" if active else "locked-card"}"><b>1️⃣ المدير المباشر</b></div>', unsafe_allow_html=True)
-            st.text_input("الاسم", key="m_n", disabled=not active)
+            st.text_input("الاسم الكامل", key="m1", disabled=not active)
+            st.text_input("المنصب", key="m2", disabled=not active)
+            st.text_input("الوظيفة", key="m3", disabled=not active)
+            st.date_input("التاريخ", key="m4", disabled=not active)
+            st.file_uploader("تحميل التوقيع", key="m5", disabled=not active)
             m_res = st.selectbox("القرار", ["قيد الانتظار", "موافق", "مرفوض"], key="m_r", disabled=not active)
             if active and st.button("اعتماد وإرسال لـ HR"):
                 if m_res == "موافق": st.session_state.stage = 2; st.rerun()
 
+        # 2. الموارد البشرية
         with col2:
             active = st.session_state.stage == 2
             st.markdown(f'<div class="approval-card {"active-card" if active else "locked-card"}"><b>2️⃣ الموارد البشرية</b></div>', unsafe_allow_html=True)
-            st.text_input("الاسم ", key="h_n", disabled=not active)
+            st.text_input("الاسم الكامل ", key="h1", disabled=not active)
+            st.text_input("المنصب ", key="h2", disabled=not active)
+            st.text_input("الوظيفة ", key="h3", disabled=not active)
+            st.date_input("التاريخ ", key="h4", disabled=not active)
+            st.file_uploader("تحميل التوقيع ", key="h5", disabled=not active)
             h_res = st.selectbox("القرار ", ["قيد الانتظار", "موافق", "مرفوض"], key="h_r", disabled=not active)
             if active and st.button("اعتماد وإرسال للمدير العام"):
                 if h_res == "موافق": st.session_state.stage = 3; st.rerun()
 
+        # 3. المدير العام
         with col3:
             active = st.session_state.stage == 3
             st.markdown(f'<div class="approval-card {"active-card" if active else "locked-card"}"><b>3️⃣ المدير العام</b></div>', unsafe_allow_html=True)
-            st.text_input("الاسم  ", key="c_n", disabled=not active)
+            st.text_input("الاسم الكامل  ", key="c1", disabled=not active)
+            st.text_input("المنصب  ", key="c2", disabled=not active)
+            st.text_input("الوظيفة  ", key="c3", disabled=not active)
+            st.date_input("التاريخ  ", key="c4", disabled=not active)
+            st.file_uploader("تحميل التوقيع  ", key="c5", disabled=not active)
             c_res = st.selectbox("القرار  ", ["قيد الانتظار", "موافق", "مرفوض"], key="c_r", disabled=not active)
             if active and st.button("إتمام الاعتماد النهائي"):
-                if c_res == "موافق": st.session_state.stage = 4; st.balloons(); st.success("تم اعتماد الطلب كلياً")
-    else:
-        st.warning("الرجاء اختيار طلب من القائمة أعلاه لبدء عملية الاعتماد.")
+                if c_res == "موافق": st.session_state.stage = 4; st.balloons(); st.success("تم الاعتماد")
