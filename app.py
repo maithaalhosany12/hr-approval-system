@@ -1,234 +1,147 @@
 import streamlit as st
-from datetime import datetime, timedelta
-import time
-import random
+from fpdf import FPDF
+import arabic_reshaper
+from bidi.algorithm import get_display
+import io
 
-# 1. إعداد الصفحة والتنسيق (النسخة الأصلية الثابتة)
-st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide", initial_sidebar_state="expanded")
+# --- 1. إعدادات الصفحة والتصميم ---
+st.set_page_config(page_title="نظام إدارة الطلبات الرسمي", layout="centered")
 
-st.markdown("""
-    <style>
-    .main { direction: rtl !important; text-align: right !important; background-color: #f4f7f9; }
-    .block-container { max-width: 1100px !important; padding-top: 1.5rem; }
-    .company-header {
-        display: flex; align-items: center; justify-content: flex-start;
-        padding: 15px 25px; background: white; border-radius: 15px; margin-bottom: 25px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-right: 6px solid #5d5fef;
-    }
-    .header-logo img { width: 45px; margin-left: 15px; }
-    .header-text h1 { margin: 0; font-size: 19px; color: #2d3436; font-weight: bold; }
+# تعريف المتغيرات في session_state إذا لم تكن موجودة
+if 'page' not in st.session_state:
+    st.session_state.page = 'request'
+if 'stage' not in st.session_state:
+    st.session_state.stage = 2  # تبدأ من 2 تعني (بانتظار المعتمد الأول)
+if 'order_id' not in st.session_state:
+    st.session_state.order_id = "REQ-88204"
+
+# --- 2. دالة معالجة النصوص العربية للـ PDF ---
+def format_arabic_text(text):
+    reshaped_text = arabic_reshaper.reshape(text)
+    return get_display(reshaped_text)
+
+# --- 3. دالة إنشاء ملف PDF الرسمي ---
+def generate_official_pdf():
+    pdf = FPDF()
+    pdf.add_page()
+    # إضافة شعار تخيلي (يمكنك استبدال 'logo.png' بملفك)
+    # pdf.image("logo.png", x=10, y=8, w=30) 
     
-    /* تنسيق الخطوات الأصلي */
-    .step-block { position: relative; padding-right: 60px; margin-bottom: 30px; }
-    .step-icon {
-        position: absolute; right: 8px; top: 0;
-        width: 42px; height: 42px; border-radius: 50%;
-        background-color: #5d5fef; color: white;
-        display: flex; align-items: center; justify-content: center;
-        font-weight: bold; z-index: 3; font-size: 18px;
-    }
-    .content-box { background-color: white; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.04); overflow: hidden; border: 1px solid #eef0f2; }
-    .step-header { background: linear-gradient(90deg, #5d5fef, #7a7cfc); color: white; padding: 12px 25px; font-size: 15px; font-weight: bold; }
-    .form-body { padding: 20px 25px; }
-
-    /* الحقول المتجاورة */
-    .stTextInput>div>div>input, .stSelectbox>div>div>div, .stDateInput>div>div>input { min-height: 32px !important; height: 32px !important; text-align: right !important; border-radius: 8px !important; }
+    pdf.set_font("Arial", 'B', 16)
+    pdf.cell(0, 10, "Official Request Summary", 0, 1, 'C')
+    pdf.ln(10)
     
-    /* التنبيهات والبطاقات */
-    .stat-card { background: white; padding: 15px; border-radius: 10px; border-top: 4px solid #5d5fef; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; }
-    .notification-timer { background-color: #fff4f4; border: 1px solid #ffcdd2; color: #c62828; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 15px; text-align: center; border-right: 5px solid #c62828; }
-    .approval-card { background: #ffffff; border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px; margin-bottom: 10px; }
-    .active-card { border-right: 5px solid #5d5fef; background: #f8faff; }
-    .locked-card { background: #f1f5f9; opacity: 0.6; pointer-events: none; }
-    .styled-table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; }
-    .styled-table th, .styled-table td { padding: 12px 15px; border-bottom: 1px solid #eee; text-align: right; font-size: 13px; }
-    </style>
-    """, unsafe_allow_html=True)
-
-# 2. إدارة الحالة والأمان (دون تغيير المنطق السابق)
-if 'authenticated' not in st.session_state: st.session_state.authenticated = False
-if 'page' not in st.session_state: st.session_state.page = 'form'
-if 'stage' not in st.session_state: st.session_state.stage = 1
-if 'order_id' not in st.session_state: st.session_state.order_id = f"REQ-{random.randint(1000, 9999)}"
-if 'request_count' not in st.session_state: st.session_state.request_count = 0
-if 'last_request_date' not in st.session_state: st.session_state.last_request_date = None
-if 'stage_start_date' not in st.session_state: st.session_state.stage_start_date = datetime.now()
-
-# 3. الهيدر الرسمي
-st.markdown('<div class="company-header"><div class="header-logo"><img src="https://cdn-icons-png.flaticon.com/512/281/281764.png"></div><div class="header-text"><h1>مؤسسة المسار المتكامل</h1><p>نظام شؤون الموظفين المطور</p></div></div>', unsafe_allow_html=True)
-
-# 4. القائمة الجانبية (نظام الصلاحيات المضاف)
-with st.sidebar:
-    st.title("🔐 تسجيل الدخول")
-    user_type = st.radio("الدخول بصفتك:", ["موظف", "مدير / HR"])
+    pdf.set_font("Arial", '', 12)
+    pdf.cell(0, 10, f"Order Reference: {st.session_state.order_id}", 0, 1, 'L')
+    pdf.cell(0, 10, f"Status: Under Review - Stage {st.session_state.stage}", 0, 1, 'L')
+    pdf.ln(10)
     
-    is_admin = False
-    if user_type == "مدير / HR":
-        pin = st.text_input("أدخل الرمز السري:", type="password")
-        if pin == "1234":
-            is_admin = True
-            st.success("تم تفعيل صلاحيات الإدارة")
-        elif pin:
-            st.error("الرمز خاطئ")
-
-    st.divider()
-    menu = ["تقديم طلب جديد", "متابعة الطلبات"]
-    if is_admin:
-        menu.append("لوحة الاعتمادات")
+    # قسم التواقيع
+    pdf.set_font("Arial", 'B', 12)
+    pdf.cell(60, 10, "Employee", 1, 0, 'C')
+    pdf.cell(60, 10, "Manager Approval", 1, 0, 'C')
+    pdf.cell(60, 10, "HR Director", 1, 1, 'C')
+    pdf.cell(60, 20, "", 1, 0)
+    pdf.cell(60, 20, "", 1, 0)
+    pdf.cell(60, 20, "", 1, 1)
     
-    choice = st.selectbox("القائمة الرئيسية:", menu)
-    st.session_state.page = 'form' if choice == "تقديم طلب جديد" else 'tracking' if choice == "متابعة الطلبات" else 'approvals'
+    return pdf.output()
 
-# --- الصفحة 1: تقديم الطلب (النموذج الموحد الأصلي 100%) ---
-if st.session_state.page == 'form':
-    if st.session_state.request_count >= 3:
-        st.error("⚠️ عذراً، لقد استنفدت الحد الأقصى للطلبات (3 طلبات فقط).")
-    elif st.session_state.last_request_date and (datetime.now() - st.session_state.last_request_date).days < 30:
-        days_left = 30 - (datetime.now() - st.session_state.last_request_date).days
-        st.warning(f"⚠️ يجب الانتظار {days_left} يوم إضافي لتقديم طلب جديد.")
-    else:
-        # الخطوة 1: الحقول الـ 5 المتجاورة (كما طلبتِ في البداية)
-        st.markdown('<div class="step-block"><div class="step-icon">1</div>', unsafe_allow_html=True)
-        with st.container():
-            st.markdown('<div class="content-box"><div class="step-header">👤 الخطوة الأولى: بيانات مقدم الطلب</div><div class="form-body">', unsafe_allow_html=True)
-            r_col, _ = st.columns([1, 4])
-            with r_col: st.text_input("رقم الطلب", value=st.session_state.order_id, disabled=True)
-            c1, c2, c3, c4, c5 = st.columns(5)
-            with c1: st.text_input("الرقم الوظيفي")
-            with c2: st.text_input("الاسم الكامل")
-            with c3: st.text_input("المسمى")
-            with c4: st.text_input("القسم")
-            with c5: st.date_input("تاريخ التعيين")
-            st.markdown('</div></div></div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+# --- 4. واجهة المستخدم ---
 
-        # الخطوة 2: الملاحظات والمرفقات
-        st.markdown('<div class="step-block"><div class="step-icon">2</div>', unsafe_allow_html=True)
-        with st.container():
-            st.markdown('<div class="content-box"><div class="step-header">📝 الخطوة الثانية: تفاصيل الطلب</div><div class="form-body">', unsafe_allow_html=True)
-            c6, c7 = st.columns(2)
-            with c6: req_type = st.selectbox("نوع الطلب", ["نقل داخلي", "تعديل مهنة", "إنهاء خدمة"])
-            with c7: st.date_input("تاريخ السريان", value=datetime.now(), disabled=True)
-            
-            if req_type in ["تعديل مهنة", "إنهاء خدمة"]:
-                st.markdown(f'<div style="background:#fff9e6; padding:10px; border-radius:8px; border-right:5px solid #ffd43b; margin-bottom:10px;">📎 مرفق مطلوب لطلب {req_type}</div>', unsafe_allow_html=True)
-                st.file_uploader("تحميل المرفق الرسمي", key="up_file")
+# القائمة العلوية للتنقل
+col1, col2 = st.columns(2)
+with col1:
+    if st.button("📝 تقديم طلب جديد", use_container_width=True):
+        st.session_state.page = 'request'
+with col2:
+    if st.button("🔍 تتبع حالة الطلب", use_container_width=True):
+        st.session_state.page = 'tracking'
 
-            st.text_area("ملاحظات إضافية تفصيلية", height=120)
-            c9, c10 = st.columns([3, 1])
-            with c9: st.file_uploader("توقيع الموظف", key="sig_user")
-            with c10: 
-                if st.button("إرسال الطلب", use_container_width=True):
-                    st.session_state.request_count += 1
-                    st.session_state.last_request_date = datetime.now()
-                    st.session_state.stage_start_date = datetime.now()
-                    st.success("تم الإرسال بنجاح!")
-                    time.sleep(1); st.session_state.page = 'tracking'; st.rerun()
-            st.markdown('</div></div></div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+st.divider()
 
-# --- الصفحة 2: متابعة الطلبات (الجدول المفقود + زر الطباعة) ---
+# --- صفحة تقديم الطلب ---
+if st.session_state.page == 'request':
+    st.header("إرسال طلب جديد")
+    with st.form("request_form"):
+        name = st.text_input("اسم الموظف")
+        req_type = st.selectbox("نوع الطلب", ["إجازة", "نقل داخلي", "عهدة"])
+        reason = st.text_area("السبب")
+        submitted = st.form_submit_button("إرسال الطلب")
+        if submitted:
+            st.success(f"تم إرسال الطلب بنجاح! رقم المرجع: {st.session_state.order_id}")
+            st.session_state.stage = 2 # ينتقل للمرحلة الثانية تلقائياً
+
+# --- صفحة تتبع الطلبات (المطلوبة) ---
 elif st.session_state.page == 'tracking':
-    st.markdown("### 🔍 سجل الطلبات والمتابعة")
-    st.markdown('<div class="content-box"><div class="form-body">', unsafe_allow_html=True)
-    st.markdown(f"""
-        <table class="styled-table" style="width:100%">
-            <thead><tr style="background:#5d5fef; color:white;"><th>رقم الطلب</th><th>النوع</th><th>التاريخ</th><th>الحالة</th></tr></thead>
-            <tbody><tr><td>{st.session_state.order_id}</td><td>طلب نشط</td><td>{datetime.now().strftime('%Y-%m-%d')}</td><td>بانتظار الاعتماد</td></tr></tbody>
-        </table>
-    """, unsafe_allow_html=True)
-    st.markdown('<br>', unsafe_allow_html=True)
-    if st.button("📄 طباعة الطلب وتصديره"):
-        st.info("جاري تجهيز النسخة للطباعة...")
-    st.markdown('</div></div>', unsafe_allow_html=True)
-
-# --- الصفحة 2: متابعة الطلبات (نظام الخطوات البصري) ---
-elif st.session_state.page == 'tracking':
-    st.markdown("### 🔍 مسار حالة الطلب")
+    st.markdown("### 🚦 مسار الاعتمادات الإدارية")
     
-    # تعريف الحالات بناءً على st.session_state.stage
-    steps = [
-        {"id": 1, "title": "تقديم الطلب", "desc": "تم إرسال الطلب بنجاح من قبلك.", "status": "completed"},
-        {"id": 2, "title": "اعتماد المدير المباشر", "desc": "الطلب الآن بانتظار مراجعة واعتماد المدير المباشر.", "status": "active" if st.session_state.stage == 1 else "completed"},
-        {"id": 3, "title": "اعتماد مدير القسم", "desc": "بانتظار موافقة مدير القسم (المعتمد الثاني).", "status": "active" if st.session_state.stage == 2 else ("completed" if st.session_state.stage > 2 else "pending")},
-        {"id": 4, "title": "الاعتماد النهائي (الموارد البشرية)", "desc": "المرحلة الأخيرة بانتظار اعتماد مدير الموارد البشرية.", "status": "active" if st.session_state.stage == 3 else ("completed" if st.session_state.stage > 3 else "pending")}
-    ]
-
-    # تنسيق CSS للنظام البصري (Timeline)
+    # تصميم الـ Timeline باستخدام HTML و CSS
     st.markdown("""
         <style>
-        .timeline-container { padding-right: 40px; border-right: 2px solid #e0e0e0; margin-right: 20px; position: relative; }
-        .timeline-item { position: relative; margin-bottom: 40px; }
-        .timeline-item::before { 
-            content: ''; position: absolute; right: -49px; top: 0; 
-            width: 16px; height: 16px; border-radius: 50%; background: white; border: 2px solid #ccc;
+        .timeline { border-right: 3px solid #ddd; padding-right: 30px; margin-right: 20px; position: relative; }
+        .step-container { position: relative; margin-bottom: 45px; }
+        .step-circle { 
+            position: absolute; right: -42px; top: 0; width: 22px; height: 22px; 
+            border-radius: 50%; background: #fff; border: 3px solid #ddd; z-index: 10;
         }
-        /* الحالة المكتملة (صح) */
-        .status-completed::before { background: #4caf50 !important; border-color: #4caf50 !important; content: '✓'; color: white; text-align: center; font-size: 10px; line-height: 14px; }
-        /* الحالة النشطة (التي يقف عندها الطلب حالياً) */
-        .status-active::before { background: #5d5fef !important; border-color: #5d5fef !important; width: 20px; height: 20px; right: -51px; }
-        
-        .step-num { font-weight: bold; color: #5d5fef; margin-bottom: 5px; font-size: 14px; }
-        .step-title { font-weight: bold; color: #2d3436; font-size: 16px; }
-        .step-desc { color: #636e72; font-size: 13px; margin-top: 5px; }
+        .step-completed { background: #28a745; border-color: #28a745; color: white; text-align: center; font-size: 14px; line-height: 18px; }
+        .step-active { background: #007bff; border-color: #007bff; box-shadow: 0 0 10px rgba(0,123,255,0.5); }
+        .step-content { direction: rtl; text-align: right; }
+        .step-title { font-weight: bold; font-size: 1.1em; color: #333; }
+        .step-desc { font-size: 0.9em; color: #666; }
+        .waiting-label { color: #d63031; font-weight: bold; font-size: 0.8em; }
         </style>
     """, unsafe_allow_html=True)
 
-    # عرض الخطوات برمجياً
-    st.markdown('<div class="timeline-container">', unsafe_allow_html=True)
-    for step in steps:
-        css_class = f"status-{step['status']}"
+    # بناء مراحل التتبع
+    stages_info = [
+        {"title": "تقديم الطلب", "desc": "تم استلام الطلب في النظام", "target": 1},
+        {"title": "المعتمد الأول (المدير المباشر)", "desc": "قيد المراجعة الفنية", "target": 2},
+        {"title": "المعتمد الثاني (مدير القسم)", "desc": "التدقيق الإداري", "target": 3},
+        {"title": "مدير الموارد البشرية", "desc": "الاعتماد النهائي وإغلاق الطلب", "target": 4},
+    ]
+
+    st.markdown('<div class="timeline">', unsafe_allow_html=True)
+    
+    for s in stages_info:
+        status_class = ""
+        icon = ""
+        waiting_text = ""
+        
+        if st.session_state.stage > s['target']:
+            status_class = "step-completed"
+            icon = "✓"
+        elif st.session_state.stage == s['target']:
+            status_class = "step-active"
+            waiting_text = f" <span class='waiting-label'>(بانتظار {s['title']})</span>"
+        
         st.markdown(f"""
-            <div class="timeline-item {css_class}">
-                <div class="step-num">خطوة {step['id']}</div>
-                <div class="step-title">{step['title']}</div>
-                <div class="step-desc">{step['desc']}</div>
+            <div class="step-container">
+                <div class="step-circle {status_class}">{icon}</div>
+                <div class="step-content">
+                    <div class="step-title">{s['title']} {waiting_text}</div>
+                    <div class="step-desc">{s['desc']}</div>
+                </div>
             </div>
         """, unsafe_allow_html=True)
+    
     st.markdown('</div>', unsafe_allow_html=True)
 
-    # إضافة زر الطباعة الذي تم طلبه سابقاً
+    # زر التحويل لـ PDF
     st.divider()
-    if st.button("📄 طباعة ملخص الطلب الرسمي"):
-        st.success("جاري تجهيز ملف PDF المعتمد...")
+    pdf_data = generate_official_pdf()
+    st.download_button(
+        label="🖨️ طباعة الطلب (PDF رسمي)",
+        data=pdf_data,
+        file_name=f"Order_{st.session_state.order_id}.pdf",
+        mime="application/pdf",
+        use_container_width=True
+    )
 
-# --- الصفحة 3: الاعتمادات (الخانات الـ 4 + Dashboard + السبب الإلزامي) ---
-elif st.session_state.page == 'approvals':
-    # الإحصائيات (Dashboard)
-    d1, d2, d3 = st.columns(3)
-    with d1: st.markdown('<div class="stat-card"><div class="stat-val">1</div><div class="stat-label">طلبات نشطة</div></div>', unsafe_allow_html=True)
-    with d2: st.markdown('<div class="stat-card"><div class="stat-val" style="color:red;">0</div><div class="stat-label">تجاوزت الـ 45 يوم</div></div>', unsafe_allow_html=True)
-    with d3: st.markdown('<div class="stat-card"><div class="stat-val" style="color:green;">12</div><div class="stat-label">مكتملة</div></div>', unsafe_allow_html=True)
-    
-    st.divider()
-    order_id_sel = st.selectbox("اختر الطلب للمراجعة:", ["--- اختر ---", st.session_state.order_id])
-    
-    if order_id_sel != "--- اختر ---":
-        remaining = 45 - (datetime.now() - st.session_state.stage_start_date).days
-        st.markdown(f'<div class="notification-timer">📢 متبقي للمسؤول {remaining} يوم لاتخاذ القرار ⏳</div>', unsafe_allow_html=True)
-        
-        col1, col2, col3 = st.columns(3)
-        stages = ["المدير المباشر", "الموارد البشرية", "المدير العام"]
-        
-        for i, name in enumerate(stages, 1):
-            with [col1, col2, col3][i-1]:
-                active = st.session_state.stage == i
-                st.markdown(f'<div class="approval-card {"active-card" if active else "locked-card"}"><b>{i}️⃣ {name}</b></div>', unsafe_allow_html=True)
-                st.text_input("الاسم", key=f"nm{i}", disabled=not active)
-                st.text_input("المنصب", key=f"ps{i}", disabled=not active)
-                st.text_input("الوظيفة", key=f"jb{i}", disabled=not active)
-                st.date_input("التاريخ", key=f"dt{i}", disabled=not active)
-                st.file_uploader("التوقيع", key=f"sg{i}", disabled=not active)
-                res = st.selectbox("القرار", ["قيد الانتظار", "موافق", "مرفوض"], key=f"rs{i}", disabled=not active)
-                
-                if active and res in ["موافق", "مرفوض"]:
-                    reason = st.text_area(f"مبررات القرار (إلزامي لـ {res})", key=f"rea{i}")
-                    if st.button(f"حفظ اعتماد {name}"):
-                        if reason:
-                            if res == "موافق":
-                                st.session_state.stage += 1
-                                st.session_state.stage_start_date = datetime.now()
-                                st.rerun()
-                            else: st.error("تم رفض الطلب")
-                        else: st.warning("يجب كتابة المبررات")
-
+    # تحكم وهمي للمحاكاة (لتجربة تغيير المراحل)
+    with st.expander("🛠️ لوحة تحكم المحاكاة (للمطور فقط)"):
+        new_stage = st.slider("تغيير مرحلة الطلب يدوياً", 1, 4, st.session_state.stage)
+        if st.button("تحديث الحالة"):
+            st.session_state.stage = new_stage
+            st.rerun()
