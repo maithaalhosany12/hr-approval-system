@@ -1,70 +1,56 @@
 import streamlit as st
-from fpdf import FPDF
-import arabic_reshaper
-from bidi.algorithm import get_display
-import datetime
+import sqlite3
+import pandas as pd
+from datetime import datetime, timedelta
 import random
-import time
 
-# --- 1. إعدادات التنسيق (الشكل الأصلي المعتمد) ---
-st.set_page_config(page_title="نظام مسار للموارد البشرية", layout="wide")
+# --- 1. إعداد قاعدة البيانات والوظائف الخلفية ---
+def init_db():
+    conn = sqlite3.connect('path_to_data.db', check_same_thread=False)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS hr_requests 
+                 (id TEXT PRIMARY KEY, emp_id TEXT, name TEXT, title TEXT, dept TEXT, 
+                  hire_date TEXT, req_type TEXT, status TEXT, stage INT, 
+                  created_at TIMESTAMP, last_action TIMESTAMP)''')
+    conn.commit()
+    return conn
 
+conn = init_db()
+
+# --- 2. التحقق من القيود (3 طلبات / 30 يوم) ---
+def check_constraints(emp_id):
+    c = conn.cursor()
+    # التحقق من عدد الطلبات
+    c.execute("SELECT COUNT(*) FROM hr_requests WHERE emp_id = ?", (emp_id,))
+    count = c.fetchone()[0]
+    # التحقق من تاريخ آخر طلب
+    c.execute("SELECT MAX(created_at) FROM hr_requests WHERE emp_id = ?", (emp_id,))
+    last_date = c.fetchone()[0]
+    
+    if count >= 3: return False, "لقد استنفدت الحد الأقصى (3 طلبات)."
+    if last_date:
+        last_dt = datetime.strptime(last_date, '%Y-%m-%d %H:%M:%S.%f')
+        if datetime.now() - last_dt < timedelta(days=30):
+            return False, f"يجب الانتظار {(timedelta(days=30) - (datetime.now() - last_dt)).days} يوم إضافي."
+    return True, ""
+
+# --- 3. الواجهة والتنسيق CSS ---
+st.set_page_config(page_title="نظام المسار المتكامل", layout="wide")
 st.markdown("""
     <style>
-    .main { direction: rtl !important; text-align: right !important; }
-    .company-header {
-        display: flex; align-items: center; padding: 15px; background: white; 
-        border-radius: 15px; margin-bottom: 25px; border-right: 6px solid #5d5fef;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-    }
-    .content-box { background: white; border-radius: 15px; padding: 20px; box-shadow: 0 4px 10px rgba(0,0,0,0.03); border: 1px solid #eee; margin-bottom: 20px; }
-    .step-header { background: #5d5fef; color: white; padding: 10px 20px; border-radius: 10px 10px 0 0; font-weight: bold; margin: -20px -20px 20px -20px; }
-    
-    /* تنسيق نظام التتبع البصري (Vertical Timeline) */
-    .timeline { border-right: 3px solid #ddd; padding-right: 30px; margin-right: 20px; position: relative; }
-    .step-container { position: relative; margin-bottom: 45px; }
-    .step-circle { 
-        position: absolute; right: -42px; top: 0; width: 24px; height: 24px; 
-        border-radius: 50%; background: #fff; border: 3px solid #ddd; z-index: 10;
-        display: flex; align-items: center; justify-content: center; font-weight: bold;
-    }
-    .step-completed { background: #28a745; border-color: #28a745; color: white; }
-    .step-active { background: #5d5fef; border-color: #5d5fef; color: white; box-shadow: 0 0 8px rgba(93,95,239,0.5); }
-    .waiting-text { color: #d63031; font-weight: bold; font-size: 14px; }
+    .main { direction: rtl !important; text-align: right !important; background-color: #f8f9fa; }
+    .stTextInput>div>div>input { height: 35px !important; text-align: right !important; }
+    .approval-card { border-right: 5px solid #5d5fef; background: #ffffff; padding: 15px; border-radius: 10px; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 2. إدارة الحالة والأمان ---
-if 'stage' not in st.session_state: st.session_state.stage = 2 # تبدأ بانتظار المعتمد الأول
-if 'order_id' not in st.session_state: st.session_state.order_id = f"REQ-{random.randint(10000, 99999)}"
-if 'stage_start_date' not in st.session_state: st.session_state.stage_start_date = datetime.datetime.now()
-if 'request_count' not in st.session_state: st.session_state.request_count = 0
-
-# --- 3. دالة الطباعة باللغة العربية ---
-def export_as_pdf(data):
-    pdf = FPDF()
-    pdf.add_page()
-    # ملاحظة: لدعم العربية فعلياً في PDF، يجب تحميل خط عربي (مثل DejaVuSans.ttf)
-    # هنا نستخدم تنسيقاً مبسطاً للبيانات الرسمية
-    pdf.set_font("Arial", 'B', 16)
-    pdf.cell(0, 10, "Employee Request Summary", 0, 1, 'C')
-    pdf.ln(10)
-    pdf.set_font("Arial", '', 12)
-    for key, value in data.items():
-        pdf.cell(0, 10, f"{key}: {value}", 0, 1, 'L')
-    pdf.ln(10)
-    pdf.cell(60, 10, "Emp Signature", 1, 0, 'C')
-    pdf.cell(60, 10, "Manager Approval", 1, 0, 'C')
-    pdf.cell(60, 10, "HR Approval", 1, 1, 'C')
-    return pdf.output()
-
-# --- 4. القائمة الجانبية (نظام الصلاحيات) ---
+# --- 4. القائمة الجانبية ونظام الصلاحيات ---
 with st.sidebar:
-    st.markdown("### 🔐 بوابة الوصول")
+    st.header("🔐 الدخول للنظام")
     user_role = st.radio("الدخول بصفة:", ["موظف", "مدير / HR"])
     is_admin = False
     if user_role == "مدير / HR":
-        pin = st.text_input("الرمز السري:", type="password")
+        pin = st.text_input("الرمز السري", type="password")
         if pin == "1234": is_admin = True
     
     st.divider()
@@ -72,99 +58,90 @@ with st.sidebar:
     if is_admin: menu.append("لوحة الاعتمادات")
     choice = st.selectbox("القائمة:", menu)
 
-# --- الصفحة 1: تقديم الطلب (النسخة الأصلية) ---
+# --- 5. منطق الصفحات ---
+
+# أ- صفحة التقديم (5 حقول متجاورة + قيود)
 if choice == "تقديم طلب جديد":
-    st.markdown('<div class="company-header"><h2>تقديم طلب جديد</h2></div>', unsafe_allow_html=True)
+    st.subheader("👤 بيانات مقدم الطلب")
+    order_id = f"REQ-{random.randint(1000, 9999)}"
     
-    if st.session_state.request_count >= 3:
-        st.error("⚠️ عذراً، لقد استنفدت الحد الأقصى للطلبات (3 طلبات فقط).")
-    else:
-        with st.container():
-            st.markdown('<div class="content-box"><div class="step-header">👤 بيانات الموظف</div>', unsafe_allow_html=True)
-            c1, c2, c3, c4, c5 = st.columns(5)
-            with c1: st.text_input("رقم الموظف")
-            with c2: st.text_input("الاسم الكامل")
-            with c3: st.text_input("المسمى")
-            with c4: st.text_input("القسم")
-            with c5: st.date_input("تاريخ التعيين")
-            st.markdown('</div>', unsafe_allow_html=True)
-            
-            st.markdown('<div class="content-box"><div class="step-header">📝 تفاصيل الطلب</div>', unsafe_allow_html=True)
-            req_type = st.selectbox("نوع الطلب", ["نقل داخلي", "تعديل مهنة", "إنهاء خدمة"])
-            st.text_area("الملاحظات")
-            st.file_uploader("إرفاق الهوية/المستندات")
-            st.file_uploader("توقيع الموظف (صورة)")
-            if st.button("إرسال الطلب الآن"):
-                st.session_state.request_count += 1
-                st.session_state.stage = 2
-                st.session_state.stage_start_date = datetime.datetime.now()
-                st.success("تم إرسال الطلب بنجاح!")
-            st.markdown('</div>', unsafe_allow_html=True)
+    # الـ 5 حقول المتجاورة تماماً كما طلبت
+    c1, c2, c3, c4, c5 = st.columns(5)
+    with c1: emp_id = st.text_input("الرقم الوظيفي")
+    with c2: name = st.text_input("الاسم الكامل")
+    with c3: title = st.text_input("المسمى")
+    with c4: dept = st.text_input("القسم")
+    with c5: hire_date = st.date_input("تاريخ التعيين")
 
-# --- الصفحة 2: متابعة الطلبات (نظام التتبع البصري المطلوب) ---
+    st.divider()
+    st.subheader("📝 تفاصيل الطلب والمرفقات")
+    col_a, col_b = st.columns(2)
+    with col_a: req_type = st.selectbox("نوع الطلب", ["نقل داخلي", "تعديل مهنة", "إنهاء خدمة"])
+    with col_b: st.file_uploader("تحميل المرفق الرسمي")
+    
+    st.text_area("ملاحظات إضافية")
+    st.file_uploader("توقيع الموظف (صورة)")
+
+    if st.button("إرسال الطلب الآن"):
+        allowed, msg = check_constraints(emp_id)
+        if not allowed:
+            st.error(msg)
+        elif emp_id and name:
+            c = conn.cursor()
+            c.execute("INSERT INTO hr_requests VALUES (?,?,?,?,?,?,?,?,?,?,?)",
+                      (order_id, emp_id, name, title, dept, str(hire_date), req_type, "بانتظار الاعتماد", 1, datetime.now(), datetime.now()))
+            conn.commit()
+            st.success(f"تم الإرسال! رقم طلبك هو: {order_id}")
+        else:
+            st.warning("يرجى إكمال البيانات الأساسية")
+
+# ب- صفحة المتابعة والطباعة
 elif choice == "متابعة الطلبات":
-    st.markdown(f"### 🔍 تتبع الطلب رقم: {st.session_state.order_id}")
+    st.subheader("🔍 سجل الطلبات")
+    df = pd.read_sql_query("SELECT id, req_type, created_at, status FROM hr_requests", conn)
+    st.dataframe(df, use_container_width=True)
     
-    stages_info = [
-        {"id": 1, "title": "تقديم الطلب", "desc": "تم استلام الطلب وبدء الإجراءات"},
-        {"id": 2, "title": "المعتمد الأول (المدير المباشر)", "desc": "مرحلة المراجعة الأولية"},
-        {"id": 3, "title": "المعتمد الثاني (مدير القسم)", "desc": "التدقيق الإداري والميزانية"},
-        {"id": 4, "title": "مدير الموارد البشرية", "desc": "الاعتماد النهائي للطلب"}
-    ]
+    if not df.empty:
+        if st.button("📄 تصدير سجل الطلبات إلى Excel"):
+            df.to_csv("requests_report.csv", index=False)
+            st.success("تم التصدير بنجاح!")
 
-    st.markdown('<div class="timeline">', unsafe_allow_html=True)
-    for s in stages_info:
-        status_class = ""
-        icon = s['id']
-        waiting = ""
-        
-        if st.session_state.stage > s['id']:
-            status_class = "step-completed"
-            icon = "✓"
-        elif st.session_state.stage == s['id']:
-            status_class = "step-active"
-            waiting = f"<span class='waiting-text'> (بانتظار {s['title']})</span>"
-            
-        st.markdown(f"""
-            <div class="step-container">
-                <div class="step-circle {status_class}">{icon}</div>
-                <div class="step-content">
-                    <div style="font-weight:bold;">{s['title']} {waiting}</div>
-                    <div style="font-size:13px; color:gray;">{s['desc']}</div>
-                </div>
-            </div>
-        """, unsafe_allow_html=True)
-    st.markdown('</div>', unsafe_allow_html=True)
-    
-    # زر الطباعة الرسمي
-    st.divider()
-    if st.button("📄 طباعة الطلب (PDF)"):
-        pdf_bytes = export_as_pdf({"Order ID": st.session_state.order_id, "Status": "In Progress"})
-        st.download_button("تحميل الملف", pdf_bytes, f"{st.session_state.order_id}.pdf")
-
-# --- الصفحة 3: الاعتمادات (للمدراء فقط) ---
+# ج- لوحة الاعتمادات (نظام الـ 45 يوم)
 elif choice == "لوحة الاعتمادات":
-    st.markdown("### 📊 لوحة تحكم الإدارة")
-    d1, d2, d3 = st.columns(3)
-    d1.metric("طلبات نشطة", "1")
-    d2.metric("بانتظار الإجراء", "1")
-    d3.metric("تجاوزت الـ 45 يوم", "0")
+    st.subheader("⚖️ نظام الاعتمادات الإدارية")
+    pending_df = pd.read_sql_query("SELECT * FROM hr_requests WHERE status != 'مكتمل'", conn)
     
-    st.divider()
-    days_left = 45 - (datetime.datetime.now() - st.session_state.stage_start_date).days
-    st.warning(f"⏳ تنبيه للمسؤول: متبقي {max(0, days_left)} يوم لاعتماد هذا الطلب قبل انتهاء المهلة.")
-    
-    current_stage_name = stages_info[st.session_state.stage-1]['title']
-    st.info(f"أنت تقوم الآن بالاعتماد كـ: {current_stage_name}")
-    
-    res = st.selectbox("القرار:", ["قيد الانتظار", "موافق", "مرفوض"])
-    reason = st.text_area("مبررات القرار (إلزامي):")
-    if st.button("حفظ القرار النهائي"):
-        if reason:
-            if res == "موافق":
-                st.session_state.stage += 1
-                st.session_state.stage_start_date = datetime.datetime.now()
-                st.success("تم الاعتماد بنجاح")
-                st.rerun()
-            else: st.error("تم رفض الطلب")
-        else: st.warning("يرجى كتابة المبررات")
+    if pending_df.empty:
+        st.info("لا توجد طلبات بانتظار الاعتماد")
+    else:
+        sel_id = st.selectbox("اختر الطلب للمراجعة", pending_df['id'])
+        req = pending_df[pending_df['id'] == sel_id].iloc[0]
+        
+        # حساب مدة الطلب (تنبيه الـ 45 يوم)
+        days_passed = (datetime.now() - datetime.strptime(req['created_at'], '%Y-%m-%d %H:%M:%S.%f')).days
+        if days_passed > 45:
+            st.markdown(f'<div style="color:red; font-weight:bold;">⚠️ تنبيه: هذا الطلب تجاوز المهلة النظامية ({days_passed} يوم)</div>', unsafe_allow_html=True)
+        
+        # توزيع خانات الاعتماد الـ 3
+        st.write(f"المرحلة الحالية: {req['stage']}")
+        col_m1, col_m2, col_m3 = st.columns(3)
+        stages_names = ["المدير المباشر", "HR", "المدير العام"]
+        
+        for i, stage_name in enumerate(stages_names, 1):
+            with [col_m1, col_m2, col_m3][i-1]:
+                is_active = (req['stage'] == i)
+                st.markdown(f'<div class="approval-card"><b>{stage_name}</b></div>', unsafe_allow_html=True)
+                st.text_input("الاسم", key=f"n{i}", disabled=not is_active)
+                res = st.selectbox("القرار", ["قيد الانتظار", "موافق", "مرفوض"], key=f"r{i}", disabled=not is_active)
+                reason = st.text_area("المبررات", key=f"rs{i}", disabled=not is_active)
+                
+                if is_active and st.button(f"حفظ قرار {stage_name}"):
+                    if reason:
+                        new_stage = i + 1 if res == "موافق" and i < 3 else i
+                        new_status = "مكتمل" if res == "موافق" and i == 3 else "مرفوض" if res == "مرفوض" else "بانتظار المرحلة التالية"
+                        c = conn.cursor()
+                        c.execute("UPDATE hr_requests SET stage=?, status=?, last_action=? WHERE id=?", 
+                                  (new_stage, new_status, datetime.now(), sel_id))
+                        conn.commit()
+                        st.rerun()
+                    else: st.error("المبررات إلزامية!")
