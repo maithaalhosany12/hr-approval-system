@@ -142,6 +142,56 @@ elif st.session_state.page == 'tracking':
         st.info("جاري تجهيز النسخة للطباعة...")
     st.markdown('</div></div>', unsafe_allow_html=True)
 
+# --- الصفحة 2: متابعة الطلبات (نظام الخطوات البصري) ---
+elif st.session_state.page == 'tracking':
+    st.markdown("### 🔍 مسار حالة الطلب")
+    
+    # تعريف الحالات بناءً على st.session_state.stage
+    steps = [
+        {"id": 1, "title": "تقديم الطلب", "desc": "تم إرسال الطلب بنجاح من قبلك.", "status": "completed"},
+        {"id": 2, "title": "اعتماد المدير المباشر", "desc": "الطلب الآن بانتظار مراجعة واعتماد المدير المباشر.", "status": "active" if st.session_state.stage == 1 else "completed"},
+        {"id": 3, "title": "اعتماد مدير القسم", "desc": "بانتظار موافقة مدير القسم (المعتمد الثاني).", "status": "active" if st.session_state.stage == 2 else ("completed" if st.session_state.stage > 2 else "pending")},
+        {"id": 4, "title": "الاعتماد النهائي (الموارد البشرية)", "desc": "المرحلة الأخيرة بانتظار اعتماد مدير الموارد البشرية.", "status": "active" if st.session_state.stage == 3 else ("completed" if st.session_state.stage > 3 else "pending")}
+    ]
+
+    # تنسيق CSS للنظام البصري (Timeline)
+    st.markdown("""
+        <style>
+        .timeline-container { padding-right: 40px; border-right: 2px solid #e0e0e0; margin-right: 20px; position: relative; }
+        .timeline-item { position: relative; margin-bottom: 40px; }
+        .timeline-item::before { 
+            content: ''; position: absolute; right: -49px; top: 0; 
+            width: 16px; height: 16px; border-radius: 50%; background: white; border: 2px solid #ccc;
+        }
+        /* الحالة المكتملة (صح) */
+        .status-completed::before { background: #4caf50 !important; border-color: #4caf50 !important; content: '✓'; color: white; text-align: center; font-size: 10px; line-height: 14px; }
+        /* الحالة النشطة (التي يقف عندها الطلب حالياً) */
+        .status-active::before { background: #5d5fef !important; border-color: #5d5fef !important; width: 20px; height: 20px; right: -51px; }
+        
+        .step-num { font-weight: bold; color: #5d5fef; margin-bottom: 5px; font-size: 14px; }
+        .step-title { font-weight: bold; color: #2d3436; font-size: 16px; }
+        .step-desc { color: #636e72; font-size: 13px; margin-top: 5px; }
+        </style>
+    """, unsafe_allow_html=True)
+
+    # عرض الخطوات برمجياً
+    st.markdown('<div class="timeline-container">', unsafe_allow_html=True)
+    for step in steps:
+        css_class = f"status-{step['status']}"
+        st.markdown(f"""
+            <div class="timeline-item {css_class}">
+                <div class="step-num">خطوة {step['id']}</div>
+                <div class="step-title">{step['title']}</div>
+                <div class="step-desc">{step['desc']}</div>
+            </div>
+        """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
+
+    # إضافة زر الطباعة الذي تم طلبه سابقاً
+    st.divider()
+    if st.button("📄 طباعة ملخص الطلب الرسمي"):
+        st.success("جاري تجهيز ملف PDF المعتمد...")
+
 # --- الصفحة 3: الاعتمادات (الخانات الـ 4 + Dashboard + السبب الإلزامي) ---
 elif st.session_state.page == 'approvals':
     # الإحصائيات (Dashboard)
@@ -181,3 +231,4 @@ elif st.session_state.page == 'approvals':
                                 st.rerun()
                             else: st.error("تم رفض الطلب")
                         else: st.warning("يجب كتابة المبررات")
+
