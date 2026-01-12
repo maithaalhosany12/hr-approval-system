@@ -1,154 +1,190 @@
 import streamlit as st
 import sqlite3
 import pandas as pd
-from datetime import datetime, timedelta
-import time
+from datetime import datetime
 import random
+import time
 
-# --- 1. وظائف قاعدة البيانات ---
-def init_db():
-    conn = sqlite3.connect('hr_system.db', check_same_thread=False)
-    c = conn.cursor()
-    c.execute('''CREATE TABLE IF NOT EXISTS requests 
-                 (order_id TEXT PRIMARY KEY, emp_id TEXT, name TEXT, title TEXT, 
-                  dept TEXT, hire_date TEXT, req_type TEXT, status TEXT, 
-                  stage INTEGER, created_at TEXT, stage_start TEXT, notes TEXT)''')
-    conn.commit()
-    return conn
-
-def add_request_to_db(data):
-    conn = init_db()
-    c = conn.cursor()
-    c.execute("INSERT INTO requests VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", data)
-    conn.commit()
-
-def update_request_status(order_id, new_stage, new_status):
-    conn = init_db()
-    c = conn.cursor()
-    c.execute("UPDATE requests SET stage=?, status=?, stage_start=? WHERE order_id=?", 
-              (new_stage, new_status, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), order_id))
-    conn.commit()
-
-# --- 2. إعداد الصفحة والتنسيق (الأصلي) ---
-st.set_page_config(page_title="نظام شؤون الموظفين", layout="wide", initial_sidebar_state="collapsed")
+# --- 1. هندسة الواجهة والتصميم البصري الفاخر ---
+st.set_page_config(page_title="نظام المسار الذكي", layout="wide")
 
 st.markdown("""
     <style>
-    .main { direction: rtl !important; text-align: right !important; background-color: #f4f7f9; }
-    .block-container { max-width: 1100px !important; padding-top: 1.5rem; }
-    .company-header {
-        display: flex; align-items: center; justify-content: flex-start;
-        padding: 15px 25px; background: white; border-radius: 15px; margin-bottom: 25px;
-        box-shadow: 0 4px 12px rgba(0,0,0,0.05); border-right: 6px solid #5d5fef;
+    @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+    
+    /* الأساسيات */
+    * { font-family: 'Cairo', sans-serif !important; direction: rtl; }
+    .main { background-color: #f0f2f5; }
+    
+    /* القائمة الجانبية: تباين عالٍ ونصوص واضحة جداً */
+    [data-testid="stSidebar"] {
+        background-color: #0d1b2a !important;
+        border-left: 1px solid #1a237e;
     }
-    .header-logo img { width: 45px; margin-left: 15px; }
-    .header-text h1 { margin: 0; font-size: 19px; color: #2d3436; font-weight: bold; }
-    .step-block { position: relative; padding-right: 60px; margin-bottom: 30px; }
-    .step-icon {
-        position: absolute; right: 8px; top: 0;
-        width: 42px; height: 42px; border-radius: 50%;
-        background-color: #5d5fef; color: white;
-        display: flex; align-items: center; justify-content: center;
-        font-weight: bold; z-index: 3; font-size: 18px;
+    .stButton>button {
+        background-color: #ffffff !important; 
+        color: #0d1b2a !important; /* نص أسود كحلي عميق */
+        border-radius: 12px !important;
+        font-weight: 800 !important;
+        height: 55px;
+        font-size: 17px !important;
+        border: none !important;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+        transition: 0.3s;
     }
-    .content-box { background-color: white; border-radius: 15px; box-shadow: 0 8px 20px rgba(0,0,0,0.04); overflow: hidden; border: 1px solid #eef0f2; }
-    .step-header { background: linear-gradient(90deg, #5d5fef, #7a7cfc); color: white; padding: 12px 25px; font-size: 15px; font-weight: bold; }
-    .form-body { padding: 20px 25px; }
-    .stTextInput>div>div>input, .stSelectbox>div>div>div, .stDateInput>div>div>input { min-height: 32px !important; height: 32px !important; text-align: right !important; border-radius: 8px !important; }
-    .stat-card { background: white; padding: 15px; border-radius: 10px; border-top: 4px solid #5d5fef; box-shadow: 0 2px 5px rgba(0,0,0,0.05); text-align: center; }
-    .approval-card { background: #ffffff; border: 1px solid #e2e8f0; padding: 15px; border-radius: 12px; margin-bottom: 10px; }
-    .active-card { border-right: 5px solid #5d5fef; background: #f8faff; }
-    .locked-card { background: #f1f5f9; opacity: 0.6; pointer-events: none; }
-    .notification-timer { background-color: #fff4f4; border: 1px solid #ffcdd2; color: #c62828; padding: 12px; border-radius: 10px; font-weight: bold; margin-bottom: 15px; text-align: center; border-right: 5px solid #c62828; }
-    .styled-table { width: 100%; border-collapse: collapse; background: white; border-radius: 10px; overflow: hidden; }
-    .styled-table th, .styled-table td { padding: 12px 15px; border-bottom: 1px solid #eee; text-align: right; font-size: 13px; }
+    .stButton>button:hover {
+        background-color: #e0e6ed !important;
+        transform: translateY(-2px);
+    }
+
+    /* تصميم الكروت الرئيسية المطور */
+    .card-container {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+        gap: 20px;
+        padding: 20px 0;
+    }
+    
+    .modern-card {
+        background: #ffffff;
+        border-radius: 20px;
+        padding: 40px 25px;
+        text-align: center;
+        border: 1px solid #e0e6ed;
+        transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+        position: relative;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.03);
+    }
+    
+    .modern-card:hover {
+        transform: translateY(-15px);
+        box-shadow: 0 20px 40px rgba(13, 27, 42, 0.15);
+        border-bottom: 6px solid #1a237e;
+    }
+
+    .card-icon {
+        font-size: 50px;
+        background: #f8f9fa;
+        width: 90px;
+        height: 90px;
+        line-height: 90px;
+        border-radius: 50%;
+        margin: 0 auto 20px;
+        transition: 0.5s;
+    }
+    .modern-card:hover .card-icon {
+        background: #1a237e;
+        color: white;
+        transform: rotateY(360deg);
+    }
+
+    .card-title { color: #0d1b2a; font-size: 20px; font-weight: 700; margin-bottom: 10px; }
+    .card-desc { color: #607d8b; font-size: 14px; line-height: 1.6; }
+
+    /* تحسين شكل التتبع (Timeline) */
+    .timeline-box {
+        background: white; padding: 40px; border-radius: 25px;
+        box-shadow: 0 15px 35px rgba(0,0,0,0.05); margin-top: 20px;
+    }
+    .step-label { font-weight: 700; color: #1a237e; margin-top: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
-# --- 3. إدارة الحالة ---
-if 'order_id' not in st.session_state: st.session_state.order_id = f"REQ-{random.randint(1000, 9999)}"
+# --- 2. محرك البيانات ---
+def init_db():
+    conn = sqlite3.connect('hr_luxury_v1.db', check_same_thread=False)
+    c = conn.cursor()
+    c.execute('''CREATE TABLE IF NOT EXISTS requests 
+                 (id TEXT PRIMARY KEY, emp_id TEXT, name TEXT, type TEXT, status TEXT, date TEXT, notes TEXT)''')
+    conn.commit()
+    return conn
 
-st.markdown('<div class="company-header"><div class="header-logo"><img src="https://cdn-icons-png.flaticon.com/512/281/281764.png"></div><div class="header-text"><h1>مؤسسة المسار المتكامل</h1><p>نظام الرقابة والطلبات الموحد</p></div></div>', unsafe_allow_html=True)
+# إدارة الحالة والتنقل
+if 'page' not in st.session_state: st.session_state.page = "الرئيسية"
+if 'current_type' not in st.session_state: st.session_state.current_type = ""
 
+# --- 3. القائمة الجانبية المرتبة ---
 with st.sidebar:
-    st.title("⚙️ القائمة الرئيسية")
-    choice = st.selectbox("انتقل إلى:", ["تقديم طلب جديد", "متابعة الطلبات", "الاعتمادات"])
+    st.markdown("<div style='text-align:center; padding:20px;'><h2 style='color:white;'>نظام المسار</h2></div>", unsafe_allow_html=True)
+    if st.button("🏠 الصفحة الرئيسية", use_container_width=True): st.session_state.page = "الرئيسية"
+    if st.button("📑 تتبع طلباتي", use_container_width=True): st.session_state.page = "تتبع"
+    if st.button("🔔 مركز الاعتمادات", use_container_width=True): st.session_state.page = "اعتماد"
 
-# --- الصفحة 1: تقديم الطلب ---
-if choice == "تقديم طلب جديد":
-    st.markdown('<div class="step-block"><div class="step-icon">1</div>', unsafe_allow_html=True)
+# --- 4. المحتوى المنظم ---
+
+def home_page():
+    st.markdown("<h1 style='color:#0d1b2a; text-align:right;'>بوابة الخدمات الإلكترونية</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color:#546e7a; font-size:18px;'>يرجى اختيار القسم الموجه له الطلب لبدء الإجراء:</p>", unsafe_allow_html=True)
+    
+    # شبكة الكروت (الخمس خانات المطلوبة)
+    cols = st.columns(5)
+    card_data = [
+        {"t": "طلب خطي للمدير", "i": "💼", "d": "مراسلات الإدارة العليا"},
+        {"t": "طلب خطي للإدارة", "i": "🏛️", "d": "تنسيق الخدمات الإدارية"},
+        {"t": "طلب خطي للموظفين", "i": "👥", "d": "شؤون الكادر الوظيفي"},
+        {"t": "طلب خطي للعاملين", "i": "⚙️", "d": "الدعم والخدمات اللوجستية"},
+        {"t": "طلب خطي للبوابة", "i": "🛂", "d": "تصاريح الأمن والدخول"}
+    ]
+    
+    for i, data in enumerate(card_data):
+        with cols[i]:
+            # الكرت كمظهر جمالي
+            st.markdown(f"""
+                <div class="modern-card">
+                    <div class="card-icon">{data['i']}</div>
+                    <div class="card-title">{data['t']}</div>
+                    <div class="card-desc">{data['d']}</div>
+                </div>
+            """, unsafe_allow_html=True)
+            # الزر كأداة ضغط (مخفي خلف التصميم أو تحته مباشرة للتنقل)
+            if st.button(f"اختيار {data['t']}", key=f"sel_{i}", use_container_width=True):
+                st.session_state.current_type = data['t']
+                st.session_state.page = "تقديم"
+                st.rerun()
+
+def request_form():
+    st.markdown(f"<h2 style='color:#1a237e;'>📝 تقديم: {st.session_state.current_type}</h2>", unsafe_allow_html=True)
+    
     with st.container():
-        st.markdown('<div class="content-box"><div class="step-header">👤 الخطوة الأولى: بيانات مقدم الطلب</div><div class="form-body">', unsafe_allow_html=True)
-        r_col, _ = st.columns([1, 4])
-        with r_col: st.text_input("رقم الطلب", value=st.session_state.order_id, disabled=True)
-        c1, c2, c3, c4, c5 = st.columns(5)
-        with c1: emp_id = st.text_input("الرقم الوظيفي")
-        with c2: name = st.text_input("الاسم الكامل")
-        with c3: title = st.text_input("المسمى")
-        with c4: dept = st.text_input("القسم")
-        with c5: hire_date = st.date_input("تاريخ التعيين")
-        st.markdown('</div></div></div>', unsafe_allow_html=True)
+        st.markdown("<div style='background:white; padding:40px; border-radius:25px; box-shadow:0 10px 30px rgba(0,0,0,0.05);'>", unsafe_allow_html=True)
+        with st.form("luxury_form"):
+            c1, c2 = st.columns(2)
+            u_id = c1.text_input("الرقم الوظيفي")
+            u_name = c2.text_input("الاسم الكامل للطلبات الرسمية")
+            u_notes = st.text_area("نص الطلب الخطي الموجه")
+            
+            submit = st.form_submit_button("إرسال الطلب بشكل رسمي 🚀")
+            if submit:
+                if u_id and u_name:
+                    order_id = f"REF-{random.randint(10000,99999)}"
+                    conn = init_db()
+                    conn.execute("INSERT INTO requests VALUES (?,?,?,?,?,?,?)", 
+                                 (order_id, u_id, u_name, st.session_state.current_type, "قيد المراجعة", 
+                                  datetime.now().strftime('%Y-%m-%d %H:%M'), u_notes))
+                    conn.commit()
+                    st.session_state.last_id = order_id
+                    st.session_state.page = "تتبع"
+                    st.rerun()
+        st.markdown("</div>", unsafe_allow_html=True)
 
-    st.markdown('<div class="step-block"><div class="step-icon">2</div>', unsafe_allow_html=True)
-    with st.container():
-        st.markdown('<div class="content-box"><div class="step-header">📝 الخطوة الثانية: تفاصيل الطلب</div><div class="form-body">', unsafe_allow_html=True)
-        cx, cy = st.columns(2)
-        with cx: req_type = st.selectbox("نوع الطلب", ["نقل داخلي", "تعديل مهنة", "إنهاء خدمة"])
-        with cy: st.date_input("تاريخ السريان", value=datetime.now(), disabled=True)
-        st.text_area("ملاحظات إضافية تفصيلية", height=100)
-        col_btn, _ = st.columns([1, 3])
-        if col_btn.button("إرسال الطلب الآن", use_container_width=True):
-            if emp_id and name:
-                data = (st.session_state.order_id, emp_id, name, title, dept, str(hire_date), 
-                        req_type, "بانتظار الاعتماد", 1, datetime.now().strftime('%Y-%m-%d %H:%M:%S'), 
-                        datetime.now().strftime('%Y-%m-%d %H:%M:%S'), "")
-                add_request_to_db(data)
-                st.success("تم الحفظ بنجاح!")
-                st.session_state.order_id = f"REQ-{random.randint(1000, 9999)}"
-            else: st.error("يرجى ملء البيانات")
-        st.markdown('</div></div></div>', unsafe_allow_html=True)
+def tracking_page():
+    st.markdown("<h2 style='color:#0d1b2a;'>📑 مسار اعتماد الطلب</h2>", unsafe_allow_html=True)
+    if 'last_id' not in st.session_state:
+        st.info("لا توجد طلبات نشطة لعرضها حالياً.") ; return
+    
+    st.markdown("""
+        <div class="timeline-box">
+            <div style="display: flex; justify-content: space-between; position: relative;">
+                <div style="position: absolute; top: 25px; left: 5%; right: 5%; height: 3px; background: #e0e6ed; z-index: 1;"></div>
+                <div style="z-index: 2; text-align: center;"><div style="width:50px; height:50px; background:#2e7d32; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto; font-weight:700;">✓</div><div class="step-label">تم الإرسال</div></div>
+                <div style="z-index: 2; text-align: center;"><div style="width:50px; height:50px; background:#1a237e; color:white; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto; font-weight:700;">1</div><div class="step-label">مراجعة الإدارة</div></div>
+                <div style="z-index: 2; text-align: center;"><div style="width:50px; height:50px; background:#e0e6ed; color:#9e9e9e; border-radius:50%; display:flex; align-items:center; justify-content:center; margin:0 auto; font-weight:700;">2</div><div class="step-label">الاعتماد النهائي</div></div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
 
-# --- الصفحة 2: متابعة الطلبات ---
-elif choice == "متابعة الطلبات":
-    st.markdown("### 🔍 سجل الطلبات")
-    conn = init_db()
-    df = pd.read_sql_query("SELECT order_id, name, req_type, status, created_at FROM requests", conn)
-    st.table(df)
-
-# --- الصفحة 3: الاعتمادات (إضافة الخانات المطلوبة) ---
-elif choice == "الاعتمادات":
-    conn = init_db()
-    pending_df = pd.read_sql_query("SELECT * FROM requests WHERE status != 'مكتمل'", conn)
-    if pending_df.empty: st.write("لا توجد طلبات معلقة.")
-    else:
-        selected_id = st.selectbox("اختر الطلب للمراجعة:", pending_df['order_id'])
-        req = pending_df[pending_df['order_id'] == selected_id].iloc[0]
-        
-        start_dt = datetime.strptime(req['stage_start'], '%Y-%m-%d %H:%M:%S')
-        remaining = 45 - (datetime.now() - start_dt).days
-        st.markdown(f'<div class="notification-timer">المتبقي لاتخاذ القرار: {remaining} يوم</div>', unsafe_allow_html=True)
-        
-        col1, col2, col3 = st.columns(3)
-        stages = ["المدير المباشر", "HR", "المدير العام"]
-        for i, stage_name in enumerate(stages, 1):
-            with [col1, col2, col3][i-1]:
-                active = (req['stage'] == i)
-                st.markdown(f'<div class="approval-card {"active-card" if active else "locked-card"}"><b>{stage_name}</b></div>', unsafe_allow_html=True)
-                
-                # الخانات الجديدة المضافة
-                st.text_input("المنصب", key=f"pos_{i}", disabled=not active)
-                st.text_input("الوظيفة", key=f"job_{i}", disabled=not active)
-                st.date_input("التاريخ", key=f"date_{i}", disabled=not active)
-                st.file_uploader("التوقيع", key=f"sig_{i}", disabled=not active)
-                
-                res = st.selectbox("القرار", ["قيد الانتظار", "موافق", "مرفوض"], key=f"res_{i}", disabled=not active)
-                reason = st.text_area("المبررات", key=f"rea_{i}", disabled=not active)
-                
-                if active and st.button(f"حفظ قرار {stage_name}"):
-                    if reason:
-                        new_stage = i + 1 if res == "موافق" and i < 3 else i
-                        new_status = "مكتمل" if res == "موافق" and i == 3 else "مرفوض" if res == "مرفوض" else "بانتظار المرحلة التالية"
-                        update_request_status(selected_id, new_stage, new_status)
-                        st.success("تم الاعتماد")
-                        st.rerun()
-                    else: st.warning("المبررات مطلوبة")
+# --- 5. منطق التشغيل ---
+if st.session_state.page == "الرئيسية": home_page()
+elif st.session_state.page == "تقديم": request_form()
+elif st.session_state.page == "تتبع": tracking_page()
